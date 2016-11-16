@@ -65,7 +65,7 @@ All predictor variables were included in the averaged K_eigen model. The largest
 
 The K_var model, where keystone species were defined by the coefficient of variation in species abundances following removal, included all predictor variables. The largest positive effects on keystoneness were closeness centrality and Page Rank. Mutualistic interaction strength had a positive effect on keystoneness but the number of mutualistic interactions had a negative effect. Competitive and predation/parasitic interaction strength had negative effects as well. Thus species that have a large impact on the variation in abundance are those that are specialized mutualists interacting with species that interact with many species. 
 
-![Figure 1](/Users/jjborrelli/Desktop/modelpar.jpeg "Figure 1")  
+![Figure 1](/Users/jjborrelli/Desktop/GitHub/rKeystone/Figures/modelpar.jpeg "Figure 1")  
 
 **Figure 1: Model averaged parameters with 95% confidence intervals for the four individual metric based impact models. Models with delta AICc < 2 were included in the averaging. Blue points indicate significantly different from 0. Note changes to the scale of the x-axis.**     
 
@@ -96,10 +96,10 @@ Our study was nonetheless limited in its scope. The communities simulated here a
 
 ## Supplemental
 
-![SuppFig1](/Users/jjborrelli/Desktop/modelparZOOM.jpeg "Supplemental Figure 1")
+![SuppFig1](/Users/jjborrelli/Desktop/GitHub/rKeystone/Figures/modelparZOOM.jpeg "Supplemental Figure 1")
 
 **Supplemental Figure 1: Model averaged parameters with 95% confidence intervals for the four individual metric based impact models zoomed in closer to 0 for more detail than the original figure. Models with delta AICc < 2 were included in the averaging. Blue points indicate significantly different from 0. In the "Change in Abundance" and "Initial Variaiton" panels both PageRank (pr) and Closeness Centrality (close) are present but located outside of the zoomed in range.** 
 
-![SuppFig 2](/Users/jjborrelli/Desktop/parimpt.jpeg "Supplemental Figure 2")
+![SuppFig 2](/Users/jjborrelli/Desktop/GitHub/rKeystone/Figures/parimpt.jpeg "Supplemental Figure 2")
 
 **Supplemental Figure 2: The importance (fraction of models containing that parameter) of each parameter in the averaged model for each of the four cases. All models with delta AICc < 2 were averaged. Blue bars indicate statistical significance of the parameter in the averaged model (p < 0.05).**
