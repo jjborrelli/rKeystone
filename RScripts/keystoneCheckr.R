@@ -90,6 +90,9 @@ in.istrsp <- lapply(inmatuse, istr.sp)
 
 gr1 <- unlist(lapply(1:sum(use), function(x) growth[spp[[x]]]))
 dia1 <- unlist(lapply(inmatuse, diag))
+gr2 <- sapply(lapply(1:sum(use), function(x) growth[spp[[x]]]), mean)
+dia2 <- sapply(lapply(inmatuse, diag), mean)
+
 
 in.itysp[[1]]
 eq1 <- lapply(r2[use], function(x) x[1000,-1] > 0)
@@ -114,3 +117,20 @@ confint(model.avg(dredge(fitB), subset = delta < 2))
 
 ggplot(modat) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met)) + geom_vline(aes(xintercept = 0)) + 
   geom_point(aes(x = coeff, y = met)) + xlab("Value") + ylab("Variable") + theme_bw()
+
+
+aggregate(eqi2$eqcom, list(unlist(spp[use])), sum)
+
+
+ityA <- apply(sapply(inmatuse, itypes)[1:3,], 1, function(x) x/sum(x))
+in.conn <- sapply(inmatuse, function(x) sum(x != 0)/(50*49))
+sumneg <- sapply(inmatuse, function(X) sum(X < 0)/sum(X != 0))
+imean <- sapply(inmatuse, function(x) mean(c(x[upper.tri(x)][x[upper.tri(x)]!=0],x[lower.tri(x)][x[lower.tri(x)]!=0])))
+
+test <- cbind(ityA[,1:2],t(sapply(in.istrsp, colMeans)))
+summary(glm(sapply(eq1, function(x) sum(x)/length(x))~test[,1]*test[,3], family = "quasibinomial"))
+summary(lm(sapply(eq2, function(x) mean(x[x!=0]))~dia2, family = "gaussian"))
+summary(glm(sapply(eq1, function(x) sum(x)/length(x))~imean+abs(dia2), family = "quasibinomial"))
+
+
+
