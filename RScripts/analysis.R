@@ -5,9 +5,20 @@
 # save.image("~/Desktop/simul-example4.Rdata") 
 # load("~/Desktop/simul-example3.Rdata")
 
+
+###
+### run sim
+###
+
+source("~/Desktop/GitHub/rKeystone/RScripts/simulation.R")
+
 ###
 ### ANALYSIS
 ###
+inmats1 <- lapply(1:1000, function(x) mats[spp[[x]], spp[[x]]])
+umat <- sapply(inmats1[use], itypes)
+unmat <- sapply(inmats1[!use], itypes)
+
 
 # how equilibrial are the communities?
 dyn <- lapply(r2[use], function(x){x[x < 0] <- 0; x})               # get new object of dynamics list for runs that worked
@@ -57,29 +68,28 @@ istrSP <- lapply(matuse, istr.sp)
 
 itySP2 <- do.call(rbind, itySP)                                     # get species level participation in interaction types
 istrSP2 <- do.call(rbind, istrSP)                                   # get species level interaction type strengths
-allks <- do.call(rbind, lapply(ks1, function(x) x[,1:4]))           # all biomass, variation, and persistence
 
 itySP3 <- t(apply(itySP2, 1, function(x) x/sum(x)))
 itySP3[is.nan(itySP3)] <- 0
 
 spi <- lapply(matuse, spints)
 spi2 <- do.call(rbind, spi)
-es <- spi2[,5] + spi2[,4]
-eo <- spi2[,10] + spi2[,9]
+colnames(spi2) <- c("pos1", "neg1", "non1", "spos1", "sneg1", "pos2", "neg2", "non2", "spos2", "sneg2")
+#es <- spi2[,5] + spi2[,4]
+#eo <- spi2[,10] + spi2[,9]
 
 ityinsp <- lapply(inmatuse, itypes.sp)
 ityinsp2 <- do.call(rbind, ityinsp)
-summary(glm(unlist(lapply(r2[use], function(x) x[1000, -1] > 0))~ityinsp2, family = "quasibinomial"))
 
 
 # put all data together in single matrix
+allks <- do.call(rbind, lapply(ks1, function(x) x[,1:4]))           # all biomass, variation, and persistence
 allks <- cbind(allks, eig = unlist(eigkey), sp.id = unlist(eqcomm), n.comp = itySP2[,1], n.mut = itySP2[,2], n.pred = itySP2[,3], 
                n.amen = itySP2[,4], n.com = itySP2[,5], 
                s.comp = istrSP2[,1], s.mut = istrSP2[,2], s.pred = istrSP2[,3], bet = unlist(betw), close = unlist(clocent),
                neigh = unlist(g.neighbors2),  ec = unlist(ecent), hub = unlist(hscore), pr = unlist(p.rank))
 ccak <- complete.cases(allks)                                       # only use complete cases
 
-dim(allks[ccak,])
 
 eq.abund <- unlist(lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))[ccak]
 eq.abund2 <- (lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))
@@ -273,56 +283,10 @@ fitCI3 <- glm(G3~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[(myd
 fitCI4 <- glm(G4~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[((evi - mydat$eig)/evi) < .1,], family = "gaussian", na.action = "na.fail")
 fitCI5 <- glm(G5~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[((icv - mydat$m.init.vary)/icv) < .1,], family = "gaussian", na.action = "na.fail")
 
-dCI <- dredge(fitCI)
-dCI2 <- dredge(fitCI2)
-dCI3 <- dredge(fitCI3)
-dCI4 <- dredge(fitCI4)
-dCI5 <- dredge(fitCI5)
+flist <- list(fitCI, fitCI2, fitCI3, fitCI4, fitCI5)
+fnames <- c("destab", "pers", "abund", "eig", "ivary")
 
-ma1 <- model.avg(dCI, subset = delta < 2)
-summary(ma1)
-
-# pers
-ma2 <- model.avg(dCI2, subset = delta < 2)
-summary(ma2)
-
-# abund
-ma3 <- model.avg(dCI3, subset = delta < 2)
-summary(ma3)
-
-# eig
-ma4 <- model.avg(dCI4, subset = delta < 2)
-summary(ma4)
-
-# init vary
-ma5 <- model.avg(dCI5, subset = delta < 2)
-summary(ma5)
-
-
-
-length(unlist(eqcomm)[ccak][newd2$G2 == 1])
-df0 <- data.frame(confint(ma1, level = .95), rownames(confint(ma1)), ma1$coefficients[1,], "Stab")
-df1 <- data.frame(confint(ma2, level = .95), rownames(confint(ma2)), ma2$coefficients[1,], "Persistence")
-df2 <- data.frame(confint(ma3, level = .95), rownames(confint(ma3)), ma3$coefficients[1,], "Change in Abundance")
-df3 <- data.frame(confint(ma4, level = .95), rownames(confint(ma4)), ma4$coefficients[1,], "Local Stability")
-df4 <- data.frame(confint(ma5, level = .95), rownames(confint(ma5)), ma5$coefficients[1,], "Initial Variation")
-
-colnames(df1) <- c("lower", "upper", "met", "coef", "mod")
-colnames(df2) <- c("lower", "upper", "met", "coef", "mod")
-colnames(df3) <- c("lower", "upper", "met", "coef", "mod")
-colnames(df4) <- c("lower", "upper", "met", "coef", "mod")
-
-df1$sig <- df1$lower < 0 & df1$upper < 0 | df1$lower > 0 & df1$upper > 0
-df2$sig <- df2$lower < 0 & df2$upper < 0 | df2$lower > 0 & df2$upper > 0
-df3$sig <- df3$lower < 0 & df3$upper < 0 | df3$lower > 0 & df3$upper > 0
-df4$sig <- df4$lower < 0 & df4$upper < 0 | df4$lower > 0 & df4$upper > 0
-
-df1$impt <- ma2$importance[rownames(df1)]
-df2$impt <- ma3$importance[rownames(df2)]
-df3$impt <- ma4$importance[rownames(df3)]
-df4$impt <- ma5$importance[rownames(df4)]
-
-dfall <- rbind(df1, df2, df3, df4)
+dfall <- multimod(flist, fnames)
 
 ggplot(dfall) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = sig)) + geom_vline(aes(xintercept = 0)) + 
   geom_point(aes(x = coef, y = met, col = sig)) + facet_wrap(~mod, scales = "free_x") + 
