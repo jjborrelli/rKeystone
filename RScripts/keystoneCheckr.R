@@ -108,29 +108,24 @@ colnames(eqi2) <- c("comp", "mut", "pred", "compS", "mutS", "predS", "eqcom", "e
 eqi2 <- as.data.frame(eqi2)
 fitA <- glm(eqcom~comp+abs(compS)+mut+mutS+pred+predS, data = eqi2, family = "binomial", na.action = "na.fail")
 fitB <- glm(eqabund~comp+abs(compS)+mut+mutS+pred+predS+gr1[which(eqi2$eqcom == 1)]+abs(dia1[which(eqi2$eqcom == 1)]), data = eqi2[which(eqi2$eqcom == 1),], family = "gaussian", na.action = "na.fail")
-ciA <- confint(fitA)
-ciB <- confint(fitB)
-modat <- data.frame(ciA, coeff <- fitA$coefficients, rownames(ciA))
-colnames(modat) <- c("lower", "upper", "coeff", "met")
-summary(fitA)
-confint(model.avg(dredge(fitB), subset = delta < 2))
 
-ggplot(modat) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met)) + geom_vline(aes(xintercept = 0)) + 
-  geom_point(aes(x = coeff, y = met)) + xlab("Value") + ylab("Variable") + theme_bw()
+plotCI(fitA)
+plotCI(fitB)
 
-
-aggregate(eqi2$eqcom, list(unlist(spp[use])), sum)
-
-
-ityA <- apply(sapply(inmatuse, itypes)[1:3,], 1, function(x) x/sum(x))
+ityA <- apply(sapply(inmatuse, itypes), 2, function(x) x/sum(x))
 in.conn <- sapply(inmatuse, function(x) sum(x != 0)/(50*49))
 sumneg <- sapply(inmatuse, function(X) sum(X < 0)/sum(X != 0))
 imean <- sapply(inmatuse, function(x) mean(c(x[upper.tri(x)][x[upper.tri(x)]!=0],x[lower.tri(x)][x[lower.tri(x)]!=0])))
 
-test <- cbind(ityA[,1:2],t(sapply(in.istrsp, colMeans)))
-summary(glm(sapply(eq1, function(x) sum(x)/length(x))~test[,1]*test[,3], family = "quasibinomial"))
-summary(lm(sapply(eq2, function(x) mean(x[x!=0]))~dia2, family = "gaussian"))
+test <- cbind(t(ityA),t(sapply(in.istrsp, colMeans)))
+summary(glm(sapply(eq1, function(x) sum(x)/length(x))~test+imean+abs(dia2), family = "quasibinomial"))
+summary(glm(sapply(eq2, function(x) mean(x[x!=0]))~dia2, family = "gaussian"))
 summary(glm(sapply(eq1, function(x) sum(x)/length(x))~imean+abs(dia2), family = "quasibinomial"))
 
+spi <- lapply(inmatuse, spints)
+spi2 <- do.call(rbind, spi)
+colnames(spi2) <- c("pos1", "neg1", "non1", "spos1", "sneg1", "pos2", "neg2", "non2", "spos2", "sneg2")
 
-
+fitC <- glm(eqi2$eqcom~spi2, family = "binomial")
+summary(fitC)
+confint(fitC)
