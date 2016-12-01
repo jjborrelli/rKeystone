@@ -222,7 +222,7 @@ plotCI <- function(fit, confidence = 0.95){
   
   
   ggplot(modat) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = cols)) + geom_vline(aes(xintercept = 0)) + 
-    geom_point(aes(x = coeff, y = met, col = cols)) + xlab("Value") + ylab("Variable") + 
+    geom_point(aes(x = coeff, y = met, col = cols)) + xlab("Coefficient") + ylab("Variable") + 
     scale_color_manual(name = "Significance", limits = levels(cols), values = c("blue", "darkgreen", "grey"), drop = F) + 
     theme_bw()
 }
