@@ -9,6 +9,51 @@
 ### ANALYSIS
 ###
 
+# how equilibrial are the communities?
+dyn <- lapply(r2[use], function(x){x[x < 0] <- 0; x})               # get new object of dynamics list for runs that worked
+cv.eq <- sapply(dyn, function(x) apply(x[990:1000,-1][,x[1000,-1] > 0], 2, sd)/(colMeans(x[990:1000, -1][,x[1000,-1] > 0])))
+#cv.eq[is.nan(cv.eq)] <- 0
+#range(colMeans(cv.eq))
+hist(unlist(cv.eq))
+
+
+# matrix of species found in each local equilibrium community
+# can be used to determine compositional similarity of communities
+eqmat <- matrix(0, nrow = sum(use), ncol = S)                       # initialize eqmat
+for(i in 1:sum(use)){
+  eqmat[i,eqcomm[[i]]] <- 1                                         # if the species is present in local comm i it gets a one, 0 otherwise
+}
+
+# initial interaction matrices
+inmatuse <- lapply(1:sum(use), function(x) mats[spp[use][[x]],spp[use][[x]]])
+# equilibrium interaction matrices for all iterations that didn't mess up
+matuse <- lapply(1:sum(use), function(i) mats[eqcomm[[i]], eqcomm[[i]]])
+
+###
+###
+###
+
+# how each spp removal affects eigenval of comm
+eigkey <- lapply(1:sum(use), function(x) eigenkey(mat = mats, growth = growth, isp = eqcomm[[x]], dyna = dyn[[x]]))        
+
+allg <- lapply(matuse, getgraph)                                    # get the network for each local eq comm
+betw <- lapply(allg, betweenness)                                   # get betweenness of each node
+clocent <- lapply(allg, closeness)                                  # get closeness centrality
+# get neighborhood of each spp going out 2 links
+g.neighbors2 <- lapply(1:length(allg), function(x){sapply(graph.neighborhood(allg[[x]], 2), function(y) length(V(y)))})
+ecent <- lapply(allg, function(x) eigen_centrality(x)$vector)       # get eigenvector centrality
+hscore <- lapply(allg, function(x) hub_score(x)$vector)             # get hub score
+p.rank <- lapply(allg, function(x) page_rank(x)$vector)             # get page rank algo
+
+
+
+###
+###
+###
+# get frequency of interaction types for each species in each equilibrial comm
+itySP <- lapply(matuse, itypes.sp)
+# get mean strength of each interaction type species participate in
+istrSP <- lapply(matuse, istr.sp)
 
 itySP2 <- do.call(rbind, itySP)                                     # get species level participation in interaction types
 istrSP2 <- do.call(rbind, istrSP)                                   # get species level interaction type strengths
@@ -16,6 +61,16 @@ allks <- do.call(rbind, lapply(ks1, function(x) x[,1:4]))           # all biomas
 
 itySP3 <- t(apply(itySP2, 1, function(x) x/sum(x)))
 itySP3[is.nan(itySP3)] <- 0
+
+spi <- lapply(matuse, spints)
+spi2 <- do.call(rbind, spi)
+es <- spi2[,5] + spi2[,4]
+eo <- spi2[,10] + spi2[,9]
+
+ityinsp <- lapply(inmatuse, itypes.sp)
+ityinsp2 <- do.call(rbind, ityinsp)
+summary(glm(unlist(lapply(r2[use], function(x) x[1000, -1] > 0))~ityinsp2, family = "quasibinomial"))
+
 
 # put all data together in single matrix
 allks <- cbind(allks, eig = unlist(eigkey), sp.id = unlist(eqcomm), n.comp = itySP2[,1], n.mut = itySP2[,2], n.pred = itySP2[,3], 
