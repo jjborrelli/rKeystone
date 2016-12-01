@@ -201,7 +201,7 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
   # does each species have positive abundance at equilibrium following each removal
   # is.eq <- t(sapply(rem, function(x) if(nrow(x) == 1000){(x[1000,-1] > 0)*1}else{NA}))
   is.eq <- matrix(NA, length(spp1), length(spp1))
-  for(i in 1:length(spp1)){if(nrow(rem[[i]] == 1000)){is.eq[i, -i] <- rem[[i]][1000, -1] > 0}else{is.eq[i,-i] <- rep(NA, length(spp1)[-1])}}
+  for(i in 1:length(spp1)){if(nrow(rem[[i]]) == 1000){is.eq[i, -i] <- rem[[i]][1000, -1] > 0}else{is.eq[i,-i] <- rep(NA, length(spp1))[-1]}}
   
   
   # get data matrix for abundance change, variability, and persistence

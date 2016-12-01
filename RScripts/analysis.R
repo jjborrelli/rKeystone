@@ -9,9 +9,13 @@
 ###
 ### run sim
 ###
-
-source("~/Desktop/GitHub/rKeystone/RScripts/simulation.R")
-
+simstart <- Sys.time()
+source("~/Desktop/GitHub/rKeystone/RScripts/communitySIM.R")
+simend1 <- Sys.time()
+simend1 - simstart
+source("~/Desktop/GitHub/rKeystone/RScripts/keystoneSIM.R")
+simend2 <- Sys.time()
+simend2 - simend1
 ###
 ### ANALYSIS
 ###
