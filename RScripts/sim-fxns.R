@@ -211,8 +211,8 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
 }
 
 
-plotCI <- function(fit){
-  ciA <- confint(fit)
+plotCI <- function(fit, confidence = 0.95){
+  ciA <- confint(fit, level = confidence)
   modat <- data.frame(ciA[complete.cases(ciA),], coeff <- coef(summary(fit))[,1], rownames(ciA)[complete.cases(ciA)], pval = coef(summary(fit))[,4])
   colnames(modat) <- c("lower", "upper", "coeff", "met", "pval")
   modat$cols <- factor("0.1 < p", levels = c("p <= 0.05", "0.05 < p <= 0.1", "0.1 < p"))
