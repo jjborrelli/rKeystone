@@ -226,3 +226,18 @@ plotCI <- function(fit, confidence = 0.95){
     scale_color_manual(name = "Significance", limits = levels(cols), values = c("blue", "darkgreen", "grey"), drop = F) + 
     theme_bw()
 }
+
+multimod <- function(fitlist, modnames){
+  dfs <- list()
+  for(i in 1:length(fitlist)){
+    d1 <- dredge(fitlist[[i]])
+    ma1 <- model.avg(d1, subset = delta < 2)
+    df1 <- data.frame(confint(ma1, level = .95), rownames(confint(ma1)), ma1$coefficients[1,], modnames[i])
+    colnames(df1) <- c("lower", "upper", "met", "coef", "mod")
+    df1$sig <- df1$lower < 0 & df1$upper < 0 | df1$lower > 0 & df1$upper > 0
+    df1$impt <- ma1$importance[rownames(df1)]
+    
+    dfs[[i]] <- df1
+  }
+  return(do.call(rbind, dfs))
+}
