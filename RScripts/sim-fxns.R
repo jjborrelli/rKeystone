@@ -1,14 +1,5 @@
 ### Notes to self
-# need to fix eigenvalue function to use jacobian, not interaction matrix
-# re ran simulation using parametric bootstrapped data from Stein et al. 
 
-
-### SAVED WORK
-# last saved 10-25-16
-# alt save 10-26-16
-# ms save 11-8-16 == example3
-# save.image("~/Desktop/simul-example4.Rdata") 
-# load("~/Desktop/simul-example3.Rdata")
 
 
 
