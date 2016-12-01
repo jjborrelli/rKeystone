@@ -209,3 +209,20 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
   
   return(list(dat, t(delta.eq), is.eq))
 }
+
+
+plotCI <- function(fit){
+  ciA <- confint(fit)
+  modat <- data.frame(ciA[complete.cases(ciA),], coeff <- coef(summary(fit))[,1], rownames(ciA)[complete.cases(ciA)], pval = coef(summary(fit))[,4])
+  colnames(modat) <- c("lower", "upper", "coeff", "met", "pval")
+  modat$cols <- factor("0.1 < p", levels = c("p <= 0.05", "0.05 < p <= 0.1", "0.1 < p"))
+  modat$cols[modat$pval <= 0.05] <- factor("p <= 0.05", levels = c("p <= 0.05", "0.05 < p <= 0.1", "0.1 < p"))
+  modat$cols[modat$pval > 0.05 & modat$pval <= 0.1] <- factor("0.05 < p <= 0.1", levels = c("p <= 0.05", "0.05 < p <= 0.1", "0.1 < p"))
+  modat$cols[modat$pval > 0.1] <- factor("0.1 < p", levels = c("p <= 0.05", "0.05 < p <= 0.1", "0.1 < p"))
+  
+  
+  ggplot(modat) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = cols)) + geom_vline(aes(xintercept = 0)) + 
+    geom_point(aes(x = coeff, y = met, col = cols)) + xlab("Value") + ylab("Variable") + 
+    scale_color_manual(name = "Significance", limits = levels(cols), values = c("blue", "darkgreen", "grey"), drop = F) + 
+    theme_bw()
+}
