@@ -111,6 +111,7 @@ for(i in 1:sum(use)){
 }
 
 evinit <- rep(ev.init, sapply(eqcomm, length))[ccak]
+mydat <- as.data.frame(allks[ccak,])
 destab <- (mydat$eig >= evinit)
 
 eab <- unlist(lapply(eq.abund2, function(x) x/sum(x)))[ccak]
@@ -123,74 +124,45 @@ evi <- rep(ev.init, sapply(eqcomm, length))[ccak]
 ## Modeling
 #### with MuMIn package
 
-
-mydat <- as.data.frame(allks[ccak,])
-
-fit1 <- glm(delta.biom~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
-fit2 <- glm(mean.vary~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
-fit3 <- glm(m.init.vary~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, 
+fit1A <- glm(delta.biom~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
+fit2A <- glm(mean.vary~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
+fit3A <- glm(m.init.vary~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, 
             family = "gaussian", data = mydat, na.action = "na.fail")
-fit4 <- glm(cbind(pers,rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak])~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+
+fit4A <- glm(cbind(pers,rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak])~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+
               bet+close+neigh+ec+hub+pr,
             family = "binomial", data = mydat, na.action = "na.fail")
-fit5 <- glm(eig~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr,
+fit5A <- glm(eig~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr,
             family = "gaussian", data = mydat, na.action = "na.fail")
 
-d1.fit <- dredge(fit1)
-d2.fit <- dredge(fit2)
-d3.fit <- dredge(fit3)
-d4.fit <- dredge(fit4)
-d5.fit <- dredge(fit5)
 
+flist.A <- list(fit1A, fit2A, fit3A, fit4A, fit5A)
+fAnames <- c("abund", "cvend", "cvinit", "pers", "eig")
 
-head(d1.fit)
-head(d2.fit)
-head(d3.fit)
-head(d4.fit)
-head(d5.fit)
+dfall.A <- multimod(flist.A, fAnames)
 
-
-dmat1 <- matrix(c(colMeans(d1.fit[d1.fit$delta < 2,], na.rm = T),colMeans(d2.fit[d2.fit$delta < 2,], na.rm = T),colMeans(d3.fit[d3.fit$delta < 2,], na.rm = T),colMeans(d4.fit[d4.fit$delta < 2,], na.rm = T),colMeans(d5.fit[d5.fit$delta < 2,], na.rm = T)), nrow = 5, byrow = T)
-colnames(dmat1) <- names(colMeans(d4.fit[d4.fit$delta < 2,]))
-rownames(dmat1) <- c("biomass", "meanvary", "initvary", "persist", "eigen")
-dmat1
-dmat2 <- matrix(c((d1.fit[1,]),(d2.fit[1,]),(d3.fit[1,]),(d4.fit[1,]),(d5.fit[1,])), nrow = 5, byrow = T)
-colnames(dmat2) <- names(colMeans(d4.fit[d4.fit$delta < 2,]))
-rownames(dmat2) <- c("biomass", "meanvary", "initvary", "persist", "eigen")
-dmat2
+ggplot(dfall.A) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = sig)) + geom_vline(aes(xintercept = 0)) + 
+  geom_point(aes(x = coef, y = met, col = sig)) + facet_wrap(~mod, scales = "free_x") + 
+  scale_color_manual(name = "Significant", values = c("grey", "blue")) + xlab("Value") + ylab("Variable") + theme_bw()
 
 #####################################
 #####################################
-fit1 <- glm(delta.biom~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
-fit2 <- glm(mean.vary~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
-fit3 <- glm(m.init.vary~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, 
+fit1B <- glm(delta.biom~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
+fit2B <- glm(mean.vary~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
+fit3B <- glm(m.init.vary~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, 
             family = "gaussian", data = mydat, na.action = "na.fail")
-fit4 <- glm(cbind(pers,rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak])~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred,
+fit4B <- glm(cbind(pers,rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak])~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred,
             family = "binomial", data = mydat, na.action = "na.fail")
-fit5 <- glm(eig~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
+fit5B <- glm(eig~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
 
 
-d1.fit <- dredge(fit1)
-d2.fit <- dredge(fit2)
-d3.fit <- dredge(fit3)
-d4.fit <- dredge(fit4)
-d5.fit <- dredge(fit5)
+flist.B <- list(fit1B, fit2B, fit3B, fit4B, fit5B)
+fBnames <- c("abund", "cvend", "cvinit", "pers", "eig")
 
+dfall.B <- multimod(flist.B, fBnames)
 
-model.avg(d1.fit, subset = delta < 5)
-model.avg(d2.fit, subset = delta < 5)
-model.avg(d3.fit, subset = delta < 5)
-model.avg(d4.fit, subset = delta < 5)
-model.avg(d5.fit, subset = delta < 5)
-
-dmat1 <- matrix(c(colMeans(d1.fit[d1.fit$delta < 2,], na.rm = T),colMeans(d2.fit[d2.fit$delta < 2,], na.rm = T),colMeans(d3.fit[d3.fit$delta < 2,], na.rm = T),colMeans(d4.fit[d4.fit$delta < 2,], na.rm = T),colMeans(d5.fit[d5.fit$delta < 2,], na.rm = T)), nrow = 5, byrow = T)
-colnames(dmat1) <- names(colMeans(d4.fit[d4.fit$delta < 2,]))
-rownames(dmat1) <- c("biomass", "meanvary", "initvary", "persist", "eigen")
-dmat1
-dmat2 <- matrix(c((d1.fit[1,]),(d2.fit[1,]),(d3.fit[1,]),(d4.fit[1,]),(d5.fit[1,])), nrow = 5, byrow = T)
-colnames(dmat2) <- names(colMeans(d4.fit[d4.fit$delta < 2,]))
-rownames(dmat2) <- c("biomass", "meanvary", "initvary", "persist", "eigen")
-dmat2
+ggplot(dfall.B) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = sig)) + geom_vline(aes(xintercept = 0)) + 
+  geom_point(aes(x = coef, y = met, col = sig)) + facet_wrap(~mod, scales = "free_x") + 
+  scale_color_manual(name = "Significant", values = c("grey", "blue")) + xlab("Value") + ylab("Variable") + theme_bw()
 
 
 
@@ -274,18 +246,18 @@ t2 <- unlist(lapply(matuse, rowSums))[ccak]
 summary(glm(G~t1+t2, data = newd2, family = "binomial", na.action = "na.fail"))
 
 
-newd2 <- mydat[eab > 10e-5,]
-newd2$G <- destab[eab > 10e-5]#G1
+newd2 <- mydat
+newd2$G <- destab#G1
 newd2$G2 <- CI.pers#G2
 newd2$G3 <- CI.abund#G3
 newd2$G4 <- CI.eig#G4
 newd2$G5 <- CI.ivary#G5
 
-fitCI <- glm(G~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2, family = "binomial", na.action = "na.fail")
-fitCI2 <- glm(G2~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[((neq - mydat$pers)/neq) < .1,], family = "gaussian", na.action = "na.fail")
-fitCI3 <- glm(G3~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[(mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) < .1,], family = "gaussian", na.action = "na.fail")
-fitCI4 <- glm(G4~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[((evi - mydat$eig)/evi) < .1,], family = "gaussian", na.action = "na.fail")
-fitCI5 <- glm(G5~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred, data = newd2[((icv - mydat$m.init.vary)/icv) < .1,], family = "gaussian", na.action = "na.fail")
+fitCI <- glm(G~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "binomial", na.action = "na.fail")
+fitCI2 <- glm(G2~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
+fitCI3 <- glm(G3~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
+fitCI4 <- glm(G4~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
+fitCI5 <- glm(G5~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
 
 flist <- list(fitCI, fitCI2, fitCI3, fitCI4, fitCI5)
 fnames <- c("destab", "pers", "abund", "eig", "ivary")
@@ -308,6 +280,21 @@ ggplot(dfall, aes(x = met, y = impt, fill = sig)) + geom_bar(stat = "identity") 
 ggsave(filename = "~/Desktop/parimpt.jpeg", width = 7, height = 5)
 ####################################
 ####################################
+spi2 <- as.data.frame(spi2[ccak,])
+fitCI.1 <- glm(newd2$G~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "binomial", na.action = "na.fail")
+fitCI2.1 <- glm(mydat$pers~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "poisson", na.action = "na.fail")
+fitCI3.1 <- glm(mydat$delta.biom~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
+fitCI4.1 <- glm(mydat$eig~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
+fitCI5.1 <- glm(mydat$m.init.vary~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
+
+flist.1 <- list(fitCI.1, fitCI2.1, fitCI3.1, fitCI4.1, fitCI5.1)
+fnames <- c("destab", "pers", "abund", "eig", "ivary")
+
+dfall.1 <- multimod(flist.1, fnames)
+
+ggplot(dfall.1) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = sig)) + geom_vline(aes(xintercept = 0)) + 
+  geom_point(aes(x = coef, y = met, col = sig)) + facet_wrap(~mod, scales = "free_x") + 
+  scale_color_manual(name = "Significant", values = c("grey", "blue")) + xlab("Value") + ylab("Variable") + theme_bw()
 
 ####################################
 ####################################
@@ -368,3 +355,82 @@ plot(d3~nshare2, main = "Rel Abund")
 plot(d4~nshare2, main = "Scaled Rel Abund")
 
 ggplot(data.frame(nshare2, d5), aes(x = nshare2, y = d5)) + geom_point(alpha = 0.1) + geom_smooth()
+
+
+
+#####################################
+#####################################
+#####################################
+library(reshape2)
+
+getShPath <- function(mat, ks){
+  test <- mat
+  diag(test) <- 0
+  test <- melt(test)
+  test <- test[test[,3] != 0,]
+  g1 <- graph.edgelist(as.matrix(test)[,1:2])
+  
+  spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out")$vpath, length) - 1)
+  dat1 <- lapply(1:nrow(spath1), function(x) cbind(spath1[x,-x], ks[x,]))
+  dat2 <- do.call(rbind, dat1)
+  
+  return(dat2)
+}
+
+getShPath.p <- function(mat, ks){
+  test <- mat
+  diag(test) <- 0
+  test <- melt(test)
+  test <- test[test[,3] != 0,]
+  g1 <- graph.edgelist(as.matrix(test)[,1:2])
+  
+  spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out")$vpath, length) - 1)
+  dat1 <- lapply(1:nrow(spath1), function(x) cbind(spath1[x,-x], ks[x,-x]))
+  dat2 <- do.call(rbind, dat1)
+  
+  return(dat2)
+}
+
+spaths <- lapply(1:sum(use), function(x) getShPath(matuse[[x]], ks2[[x]]))
+spaths.p <- lapply(1:sum(use), function(x) getShPath.p(matuse[[x]], ks3[[x]]))
+spathsp <- do.call(rbind, spaths.p)
+hist(spathsp[spathsp[,2] == 0,1])
+
+path <- spa1[[1]]
+mat <- matuse[[1]]
+ipath <- function(mat, ks){
+  test <- mat
+  diag(test) <- 0
+  test <- melt(test)
+  test <- test[test[,3] != 0,]
+  g1 <- graph.edgelist(as.matrix(test)[,1:2])
+  
+  pathints <- list()
+  extinctions <- which(apply(ks, 1, function(x) sum(!x, na.rm = T))!=0)
+  for(i in 1:length(extinctions)){
+    spa1 <- get.shortest.paths(g1, extinctions[i], which(!ks[extinctions[i],]), mode = "out", output = "epath")$epath
+    vspa <- lapply(spa1, as.vector)
+    pathints[[i]] <- lapply(vspa, function(x) test[x,3])
+  }
+  return(pathints)
+}
+
+mpath <- list()
+mpath2 <- list()
+for(i in 1:sum(use)){
+  mpath[[i]] <- do.call(rbind,lapply(ipath(matuse[[i]], ks3[[i]]), function(x) cbind(sapply(x, mean),sapply(x, length))))
+  mpath2[[i]] <- do.call(rbind,lapply(ipath(matuse[[i]], ks3[[i]]), function(x) t(sapply(x, function(y){c(sum(y < 0), mean(y[y < 0]), sum(y > 0), mean(y[y > 0]))}))))
+  print(i)
+}
+
+mp1 <- do.call(rbind, mpath)
+mp2 <- do.call(rbind, mpath2)
+mp2[is.nan(mp2)] <- 0
+head(mp2)
+plot(mp2[,c(1,3)])
+#####################################
+
+
+
+#####################################
+#####################################
