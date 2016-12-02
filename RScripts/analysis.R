@@ -77,8 +77,8 @@ itySP3 <- t(apply(itySP2, 1, function(x) x/sum(x)))
 itySP3[is.nan(itySP3)] <- 0
 
 spi <- lapply(matuse, spints)
-spi2 <- do.call(rbind, spi)
-colnames(spi2) <- c("pos1", "neg1", "non1", "spos1", "sneg1", "pos2", "neg2", "non2", "spos2", "sneg2")
+spin2 <- do.call(rbind, spi)
+colnames(spin2) <- c("pos1", "neg1", "non1", "spos1", "sneg1", "pos2", "neg2", "non2", "spos2", "sneg2")
 #es <- spi2[,5] + spi2[,4]
 #eo <- spi2[,10] + spi2[,9]
 
@@ -280,8 +280,8 @@ ggplot(dfall, aes(x = met, y = impt, fill = sig)) + geom_bar(stat = "identity") 
 ggsave(filename = "~/Desktop/parimpt.jpeg", width = 7, height = 5)
 ####################################
 ####################################
-spi2 <- as.data.frame(spi2[ccak,])
-fitCI.1 <- glm(newd2$G~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "binomial", na.action = "na.fail")
+spi2 <- data.frame(spin2[ccak,], G = newd2$G)
+fitCI.1 <- glm(G~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "binomial", na.action = "na.fail")
 fitCI2.1 <- glm(mydat$pers~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "poisson", na.action = "na.fail")
 fitCI3.1 <- glm(mydat$delta.biom~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
 fitCI4.1 <- glm(mydat$eig~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
