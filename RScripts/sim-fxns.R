@@ -156,7 +156,7 @@ getgraph <- function(mat){
 keystone <- function(x, dyn, eqcomm, mats, growth){
   rem <- list()                                                     # list for ode results
   pers <- c()                                                       # vector for persistence (could be done outside the loop)
-  
+  tte <- list()
   dyna <- dyn[[x]]                                                  # which initial community dynamics are we using
   spp1 <- eqcomm[[x]]                                               # what species from initial community are present at equilibrium
   initial1 <- mats[spp1, spp1]                                      # interaction matrix for equilibrium community
@@ -172,8 +172,10 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
     
     if(nrow(rem[[i]]) == 1000){                                     # if statement to determine if the run worked or crapped out
       pers[i] <- sum(rem[[i]][1000,-1] > 0)                         # what fraction of species have positive abundance
+      tte[[i]] <- 1000-apply(rem[[i]], 2, function(x) sum(x == 0))
     }else{
       pers[i] <- NA                                                 # if run crashed gives NA
+      tte[[i]] <- NA
     }
     
     
@@ -207,7 +209,7 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
   # get data matrix for abundance change, variability, and persistence
   dat <- cbind(delta.biom, mean.vary, m.init.vary, pers)  
   
-  return(list(dat, t(delta.eq), is.eq))
+  return(list(dat, t(delta.eq), is.eq, tte))
 }
 
 
