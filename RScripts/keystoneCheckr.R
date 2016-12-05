@@ -107,7 +107,9 @@ eqi2 <- cbind(do.call(rbind, in.itysp), do.call(rbind, in.istrsp), unlist(eq1), 
 colnames(eqi2) <- c("comp", "mut", "pred", "amens", "comm", "compS", "mutS", "predS", "eqcom", "eqabund")
 eqi2 <- as.data.frame(eqi2)
 fitA <- glm(eqcom~comp+abs(compS)+mut+mutS+pred+predS+amens+comm, data = eqi2, family = "binomial", na.action = "na.fail")
-fitB <- glm(eqabund~comp+abs(compS)+mut+mutS+pred+predS+amens+comm+gr1[which(eqi2$eqcom == 1)]+abs(dia1[which(eqi2$eqcom == 1)]), data = eqi2[which(eqi2$eqcom == 1),], family = "gaussian", na.action = "na.fail")
+
+eqi3 <- data.frame(eqi2[which(eqi2$eqcom == 1),], gr1 = gr1[which(eqi2$eqcom == 1)], dia1 = abs(dia1[which(eqi2$eqcom == 1)]))
+fitB <- glm(eqabund~comp+abs(compS)+mut+mutS+pred+predS+amens+comm+gr1+dia1, data = eqi3, family = "gaussian", na.action = "na.fail")
 
 plotCI(fitA)
 plotCI(fitB)
@@ -121,6 +123,12 @@ test <- cbind(t(ityA),t(sapply(in.istrsp, colMeans)))
 summary(glm(sapply(eq1, function(x) sum(x)/length(x))~test+imean+abs(dia2), family = "quasibinomial"))
 summary(glm(sapply(eq2, function(x) mean(x[x!=0]))~dia2, family = "gaussian"))
 summary(glm(sapply(eq1, function(x) sum(x)/length(x))~imean+abs(dia2), family = "quasibinomial"))
+
+whComm <- data.frame(alive = sapply(eq1, sum), dead = sapply(eq1, function(x) sum(!x)), dia2 = dia2, imean = imean, t(ityA),t(sapply(in.istrsp, colMeans)))
+fitE <- (glm(cbind(alive, dead)~dia2, family = "quasibinomial", data = whComm))
+cv.glm(data = whComm, fitE)
+plot((alive/(alive + dead))~dia2, data = whComm)
+points(fitE$fitted.values~dia2, col = "blue", pch = 20)
 
 spi <- lapply(inmatuse, spints)
 spi2 <- do.call(rbind, spi)
