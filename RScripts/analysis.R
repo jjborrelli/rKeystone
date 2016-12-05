@@ -470,6 +470,32 @@ ipath <- function(mat, ks){
   return(pathints)
 }
 
+pfun <- function(g, x){
+  p1 <- c()
+  for(i in 1:(length(x)-1)){
+    p1[i] <- g[g$Var1 == x[i] & g$Var2 == x[i+1], 3]
+    #print(i)
+  }
+  return(p1)
+}
+
+ipathAll <- function(mat, ks){
+  test <- mat
+  diag(test) <- 0
+  test <- melt(test)
+  test <- test[test[,3] != 0,]
+  g1 <- graph.edgelist(as.matrix(test)[,1:2])
+  
+  pathints <- list()
+  extinctions <- which(apply(ks, 1, function(x) sum(!x, na.rm = T))!=0)
+  for(i in 1:length(extinctions)){
+    spa1 <- all_simple_paths(g1, extinctions[i], which(!ks[extinctions[i],]), mode = "out")
+    vspa <- lapply(spa1, as.vector)
+    pathints[[i]] <- lapply(vspa, function(x) pfun(test, x))
+  }
+  return(pathints)
+}
+
 mpath <- list()
 mpath2 <- list()
 for(i in 1:sum(use)){
