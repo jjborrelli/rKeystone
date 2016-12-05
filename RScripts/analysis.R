@@ -425,7 +425,7 @@ getShPath <- function(mat, ks){
   test <- test[test[,3] != 0,]
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
-  spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out")$vpath, length) - 1)
+  spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out", output = "epath")$epath, length))
   dat1 <- lapply(1:nrow(spath1), function(x) cbind(x, spath1[x,-x], ks[x,]))
   dat2 <- do.call(rbind, dat1)
   
@@ -439,7 +439,7 @@ getShPath.p <- function(mat, ks){
   test <- test[test[,3] != 0,]
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
-  spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out")$vpath, length) - 1)
+  spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out", output = "epath")$epath, length))
   dat1 <- lapply(1:nrow(spath1), function(x) cbind(x, spath1[x,-x], ks[x,-x]))
   dat2 <- do.call(rbind, dat1)
   
@@ -449,7 +449,7 @@ getShPath.p <- function(mat, ks){
 spaths <- lapply(1:sum(use), function(x) getShPath(matuse[[x]], ks2[[x]]))
 spaths.p <- lapply(1:sum(use), function(x) getShPath.p(matuse[[x]], ks3[[x]]))
 spathsp <- do.call(rbind, spaths.p)
-hist(spathsp[spathsp[,2] == 0,1])
+hist(spathsp[spathsp[,3] == 0,2])
 
 path <- spa1[[1]]
 mat <- matuse[[1]]
