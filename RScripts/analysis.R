@@ -359,7 +359,60 @@ plot(d4~nshare2, main = "Scaled Rel Abund")
 ggplot(data.frame(nshare2, d5), aes(x = nshare2, y = d5)) + geom_point(alpha = 0.1) + geom_smooth()
 
 
+#####################################
+#####################################
+#####################################
+# Alternatives for keystones
+# keystone as species whose removal leads to at more than 1 extinction
+eqnum <- rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak]
+mydat$e <- eqnum-1-mydat$pers > 2
+gfit <-glm(e~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+bet+close+neigh+ec+pr, family = "binomial", data = mydat, na.action = "na.fail")
+gfit <-glm(e~n.comp+n.mut+n.pred+bet, family = "binomial", data = mydat, na.action = "na.fail")
+cv.binary(gfit)
+confint(model.avg(dredge(gfit)))
 
+ks2[[1]]
+cost1 <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+
+
+mydat1 <- data.frame(e = mydat$e, deg = unlist(lapply(allg, degree))[ccak])
+fitlda1 <- lda(e~deg, data = data.frame(e = mydat$e, deg = unlist(lapply(allg, degree))[ccak]))
+fitlda2 <- lda(e~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+bet+close+neigh+ec+pr, data = mydat)
+
+sam <- c(sample(which(mydat$e), sum(mydat$e)/2), sample(which(!mydat$e), sum(!mydat$e)/2))
+traindat <- mydat[sam,]
+testdat <- mydat[-sam,]
+
+ldatrain <- lda(e~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+bet+close+neigh+ec+pr, data = traindat)
+plda <- predict(ldatrain, newdata = testdat)
+
+confusion <- function(actual, predicted, names = NULL, printit = TRUE,
+                       prior = NULL) {
+   if (is.null(names))
+     names <- levels(actual)
+     tab <- table(actual, predicted)
+     acctab <- t(apply(tab, 1, function(x) x/sum(x)))
+     dimnames(acctab) <- list(Actual = names, "Predicted (cv)" = names)
+     if (is.null(prior)) {
+       relnum <- table(actual)
+       prior <- relnum/sum(relnum)
+       acc <- sum(tab[row(tab) == col(tab)])/sum(tab)
+       }
+     else {
+       acc <- sum(prior * diag(acctab))
+       names(prior) <- names
+       }
+     if (printit)
+       print(round(c("Overall accuracy" = acc, "Prior frequency" = prior),
+                     4))
+     if (printit) {
+       cat("\nConfusion matrix", "\n")
+       print(round(acctab, 4))
+       }
+     invisible(acctab)
+}
+
+confusion(testdat$e, plda$class)
 #####################################
 #####################################
 #####################################
@@ -373,7 +426,7 @@ getShPath <- function(mat, ks){
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
   spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out")$vpath, length) - 1)
-  dat1 <- lapply(1:nrow(spath1), function(x) cbind(spath1[x,-x], ks[x,]))
+  dat1 <- lapply(1:nrow(spath1), function(x) cbind(x, spath1[x,-x], ks[x,]))
   dat2 <- do.call(rbind, dat1)
   
   return(dat2)
@@ -387,7 +440,7 @@ getShPath.p <- function(mat, ks){
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
   spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out")$vpath, length) - 1)
-  dat1 <- lapply(1:nrow(spath1), function(x) cbind(spath1[x,-x], ks[x,-x]))
+  dat1 <- lapply(1:nrow(spath1), function(x) cbind(x, spath1[x,-x], ks[x,-x]))
   dat2 <- do.call(rbind, dat1)
   
   return(dat2)
