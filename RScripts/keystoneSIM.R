@@ -16,12 +16,13 @@ t.key <- Sys.time()                                                 # note time 
 ks1 <- list()
 ks2 <- list()
 ks3 <- list()
+ks4 <- list()
 for(i in 1:sum(use)){
   KS <- keystone(i, dyn = r2[use], eqcomm, mats, growth)            # keystone species simulation
   ks1[[i]] <- KS[[1]]                                               # biomass variability and persistence
   ks2[[i]] <- KS[[2]]                                               # change in spp biomass with removal
   ks3[[i]] <- KS[[3]]                                               # who went extinct
-  
+  ks4[[i]] <- KS[[4]]
   cat(paste("\n ------------------|   ", i, "   |------------------ \n"))
 }
 
