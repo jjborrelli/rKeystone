@@ -126,9 +126,9 @@ spi <- lapply(inmatuse, spints)
 spi2 <- do.call(rbind, spi)
 colnames(spi2) <- c("pos1", "neg1", "non1", "spos1", "sneg1", "pos2", "neg2", "non2", "spos2", "sneg2")
 
-spi3 <- data.frame(eco = eqi2$eqcom, spi2)
-fitC <- glm(eco~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi3, family = "binomial")
-fitD <- glm(eqi2$eqabund~spi2, family = "gaussian")
+spi3 <- data.frame(eqa = eqi2$eqabund, eco = eqi2$eqcom, spi2)
+fitC <- glm(eco~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = abs(spi3), family = "binomial")
+fitD <- glm(eqa~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = abs(spi3), family = "gaussian")
 summary(fitC)
 summary(fitD)
 

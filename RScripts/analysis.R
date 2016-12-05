@@ -3,7 +3,7 @@
 # alt save 10-26-16
 # ms save 11-8-16 == example3
 # save.image("~/Desktop/simex.Rdata") 
-# load("~/Desktop/simul-example3.Rdata")
+# load("~/Desktop/simex.Rdata")
 
 
 ###
@@ -209,42 +209,44 @@ eqs2 <- do.call(rbind, eqs1)
 ####################################
 ####################################
 
-CI.abund <- ((mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) * (1/eab))[(mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) < .1]
-CI.ivary <- (((icv - mydat$m.init.vary)/icv) * (1/eab))[((icv - mydat$m.init.vary)/icv) < .1]
-CI.pers <- (((neq - mydat$pers)/neq) * (1/eab))[((neq - mydat$pers)/neq) < .1]
-CI.eig <- (((evi - mydat$eig)/evi) * (1/eab))[((evi - mydat$eig)/evi) < .1]
-
-plot(((neq - mydat$pers)/neq)[((evi - mydat$eig)/evi) < .1]~eab[((evi - mydat$eig)/evi) < .1])
+CI.abund <- ((mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) * (1/eab))
+CI.ivary <- (((icv - mydat$m.init.vary)/icv) * (1/eab))
+CI.pers <- (((neq - mydat$pers)/neq) * (1/eab))
+CI.eig <- (((evi - mydat$eig)/evi) * (1/eab))
 
 
-quant1 <- .9
-G1 <- (abs(CI.pers) > quantile(abs(CI.pers), probs = quant1) & abs(CI.abund) > quantile(abs(CI.abund), probs = quant1) & (CI.eig) > quantile((CI.eig), probs = quant1) & abs(CI.ivary) > quantile(abs(CI.ivary), probs = quant1))*1
-sum(G1)
-G2 <- (abs(CI.pers) > quantile(abs(CI.pers), probs = quant1))*1
-sum(G2)
-G3 <- (abs(CI.abund) > quantile(abs(CI.abund), probs = quant1))*1
-sum(G3)
-G4 <- ((CI.eig) > quantile((CI.eig), probs = quant1))*1
-sum(G4)
-G5 <- (abs(CI.ivary) > quantile(abs(CI.ivary), probs = quant1))*1
-sum(G5)
+#quant1 <- .9
+#G1 <- (abs(CI.pers) > quantile(abs(CI.pers), probs = quant1) & abs(CI.abund) > quantile(abs(CI.abund), probs = quant1) & (CI.eig) > quantile((CI.eig), probs = quant1) & abs(CI.ivary) > quantile(abs(CI.ivary), probs = quant1))*1
+#sum(G1)
+#G2 <- (abs(CI.pers) > quantile(abs(CI.pers), probs = quant1))*1
+#sum(G2)
+#G3 <- (abs(CI.abund) > quantile(abs(CI.abund), probs = quant1))*1
+#sum(G3)
+#G4 <- ((CI.eig) > quantile((CI.eig), probs = quant1))*1
+#sum(G4)
+#G5 <- (abs(CI.ivary) > quantile(abs(CI.ivary), probs = quant1))*1
+#sum(G5)
 
 
-G1 <- (abs(CI.pers) > 100 & abs(CI.abund) > 100 & (CI.eig) > 100 & abs(CI.ivary) > 100)
-sum(G1)
-G2 <- (abs(CI.pers) > 100)*1
-sum(G2)
-G3 <- (abs(CI.abund) > 100)*1
-sum(G3)
-G4 <- ((CI.eig) > 100)*1
-sum(G4)
-G5 <- (abs(CI.ivary) > 100)*1
-sum(G5)
+#G1 <- (abs(CI.pers) > 100 & abs(CI.abund) > 100 & (CI.eig) > 100 & abs(CI.ivary) > 100)
+#sum(G1)
+#G2 <- (abs(CI.pers) > 100)*1
+#sum(G2)
+#G3 <- (abs(CI.abund) > 100)*1
+#sum(G3)
+#G4 <- ((CI.eig) > 100)*1
+#sum(G4)
+#G5 <- (abs(CI.ivary) > 100)*1
+#sum(G5)
 
-t1 <- unlist(lapply(matuse, colSums))[ccak]
-t2 <- unlist(lapply(matuse, rowSums))[ccak]
-summary(glm(G~t1+t2, data = newd2, family = "binomial", na.action = "na.fail"))
+#t1 <- unlist(lapply(matuse, colSums))[ccak]
+#t2 <- unlist(lapply(matuse, rowSums))[ccak]
+#summary(glm(G~t1+t2, data = newd2, family = "binomial", na.action = "na.fail"))
 
+subAb <- abs(mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) > 1
+subIv <- ((icv - mydat$m.init.vary)/icv) > .1
+subPe <- ((neq - mydat$pers)/neq) > 1
+subEi <- ((evi - mydat$eig)/evi) > 1
 
 newd2 <- mydat
 newd2$G <- destab#G1
@@ -254,10 +256,10 @@ newd2$G4 <- CI.eig#G4
 newd2$G5 <- CI.ivary#G5
 
 fitCI <- glm(G~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "binomial", na.action = "na.fail")
-fitCI2 <- glm(G2~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
-fitCI3 <- glm(G3~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
-fitCI4 <- glm(G4~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
-fitCI5 <- glm(G5~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "gaussian", na.action = "na.fail")
+fitCI2 <- glm(G2~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subPe,], family = "gaussian", na.action = "na.fail")
+fitCI3 <- glm(G3~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subAb,], family = "gaussian", na.action = "na.fail")
+fitCI4 <- glm(G4~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subEi,], family = "gaussian", na.action = "na.fail")
+fitCI5 <- glm(G5~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subIv,], family = "gaussian", na.action = "na.fail")
 
 flist <- list(fitCI, fitCI2, fitCI3, fitCI4, fitCI5)
 fnames <- c("destab", "pers", "abund", "eig", "ivary")
@@ -280,12 +282,12 @@ ggplot(dfall, aes(x = met, y = impt, fill = sig)) + geom_bar(stat = "identity") 
 ggsave(filename = "~/Desktop/parimpt.jpeg", width = 7, height = 5)
 ####################################
 ####################################
-spi2 <- data.frame(spin2[ccak,], G = newd2$G)
+spi2 <- data.frame(spin2[ccak,], G = newd2$G, mydat)
 fitCI.1 <- glm(G~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "binomial", na.action = "na.fail")
-fitCI2.1 <- glm(mydat$pers~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "poisson", na.action = "na.fail")
-fitCI3.1 <- glm(mydat$delta.biom~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
-fitCI4.1 <- glm(mydat$eig~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
-fitCI5.1 <- glm(mydat$m.init.vary~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
+fitCI2.1 <- glm(pers~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "poisson", na.action = "na.fail")
+fitCI3.1 <- glm(delta.biom~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
+fitCI4.1 <- glm(eig~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
+fitCI5.1 <- glm(m.init.vary~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
 
 flist.1 <- list(fitCI.1, fitCI2.1, fitCI3.1, fitCI4.1, fitCI5.1)
 fnames <- c("destab", "pers", "abund", "eig", "ivary")
