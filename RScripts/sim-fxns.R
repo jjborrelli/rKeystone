@@ -15,6 +15,7 @@ library(ggplot2)
 library(MuMIn)
 library(rootSolve)
 library(DAAG)
+library(reshape2)
 
 ###
 ### FUNCTIONS
@@ -33,7 +34,7 @@ lvmod <- function(times, state, parms){
 # Function to detect extinction (prevents negative abundances)
 ext1 <- function (times, states, parms){
   with(as.list(states), {
-    states[states < 10^-30] <- 0 
+    states[states < 10^-5] <- 0 
     if(sum(states >= 100) >= 1){states<-rep(0, length(states))} 
     return(c(states))
   })

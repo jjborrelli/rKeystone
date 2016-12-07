@@ -2,8 +2,8 @@
 # last saved 10-25-16
 # alt save 10-26-16
 # ms save 11-8-16 == example3
-# save.image("~/Desktop/simex.Rdata") 
-# load("~/Desktop/simex.Rdata")
+# save.image("~/Desktop/simex2.Rdata") 
+# load("~/Desktop/simex2.Rdata")
 
 
 ###
@@ -35,8 +35,10 @@ hist(unlist(cv.eq))
 # matrix of species found in each local equilibrium community
 # can be used to determine compositional similarity of communities
 eqmat <- matrix(0, nrow = sum(use), ncol = S)                       # initialize eqmat
+eqmat1 <- matrix(0, nrow = sum(use), ncol = S)
 for(i in 1:sum(use)){
-  eqmat[i,eqcomm[[i]]] <- 1                                         # if the species is present in local comm i it gets a one, 0 otherwise
+  eqmat[i,eqcomm[[i]]] <- 1 
+  eqmat1[i,eqcomm[[i]]] <- eq.abund2[[i]] # if the species is present in local comm i it gets a one, 0 otherwise
 }
 
 # initial interaction matrices
@@ -94,7 +96,7 @@ allks <- cbind(allks, eig = unlist(eigkey), sp.id = unlist(eqcomm), n.comp = ity
                neigh = unlist(g.neighbors2),  ec = unlist(ecent), hub = unlist(hscore), pr = unlist(p.rank))
 ccak <- complete.cases(allks)                                       # only use complete cases
 
-
+spin3 <- spin2[ccak,]
 eq.abund <- unlist(lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))[ccak]
 eq.abund2 <- (lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))
 
@@ -119,19 +121,19 @@ icv <- rep(sapply(cv.eq, mean), sapply(eqcomm, length))[ccak]
 neq <- rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak]
 evi <- rep(ev.init, sapply(eqcomm, length))[ccak]
 
-
+dAbund1 <- lapply(lapply(ks2, function(x){apply(x, 1, function(y){c(mNeg = mean(y[y < 0]), nNeg = sum(y < 0)/length(y), mPos = mean(y[y > 0]), nPos = sum(y > 0)/length(y))})}),t)
+dAbund2 <- do.call(rbind, dAbund1)[ccak,]
 
 ## Modeling
 #### with MuMIn package
 
-fit1A <- glm(delta.biom~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
-fit2A <- glm(mean.vary~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
-fit3A <- glm(m.init.vary~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr, 
+fit1A <- glm(delta.biom~n.comp*s.comp+n.mut*s.mut+n.pred*s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
+fit2A <- glm(mean.vary~n.comp*s.comp+n.mut*s.mut+n.pred*s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
+fit3A <- glm(m.init.vary~n.comp*s.comp+n.mut*s.mut+n.pred*s.pred+bet+close+neigh+ec+hub+pr, 
             family = "gaussian", data = mydat, na.action = "na.fail")
-fit4A <- glm(cbind(pers,rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak])~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+
-              bet+close+neigh+ec+hub+pr,
+fit4A <- glm(cbind(pers,rep(sapply(eqcomm, length), sapply(eqcomm, length))[ccak])~n.comp*s.comp+n.mut*s.mut+n.pred*s.pred+bet+close+neigh+ec+hub+pr,
             family = "binomial", data = mydat, na.action = "na.fail")
-fit5A <- glm(eig~n.comp+n.mut+n.pred+s.comp+s.mut+s.pred+bet+close+neigh+ec+hub+pr,
+fit5A <- glm(eig~n.comp*s.comp+n.mut*s.mut+n.pred*s.pred+bet+close+neigh+ec+hub+pr,
             family = "gaussian", data = mydat, na.action = "na.fail")
 
 
@@ -174,25 +176,24 @@ CI.pers <- ((neq - mydat$pers)/neq) * (1/eab)
 CI.eig <- ((evi - mydat$eig)/evi) * (1/eab)
 
 
-fit1 <- glm(CI.abund~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
+fit1 <- glm(CI.abund~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
 
-fit3 <- glm(CI.ivary~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, 
+fit3 <- glm(CI.ivary~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, 
             family = "gaussian", data = mydat, na.action = "na.fail")
-fit4 <- glm(CI.pers~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred,
+fit4 <- glm(CI.pers~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr,
             family = "gaussian", data = mydat, na.action = "na.fail")
-fit5 <- glm(CI.eig~n.comp+n.mut+n.pred+n.amen+n.com+s.comp+s.mut+s.pred, family = "gaussian", data = mydat, na.action = "na.fail")
+fit5 <- glm(CI.eig~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, family = "gaussian", data = mydat, na.action = "na.fail")
 
 
-d1.fit <- dredge(fit1)
-d3.fit <- dredge(fit3)
-d4.fit <- dredge(fit4)
-d5.fit <- dredge(fit5)
+flist.alt <- list(fit1, fit3, fit4, fit5)
+fBnames <- c("abund", "cvinit", "pers", "eig")
 
+dfall.alt <- multimod(flist.alt, fBnames)
 
-head(d1.fit)
-head(d3.fit)
-head(d4.fit)
-head(d5.fit)
+ggplot(dfall.alt) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met, col = sig)) + geom_vline(aes(xintercept = 0)) + 
+  geom_point(aes(x = coef, y = met, col = sig)) + facet_wrap(~mod, scales = "free_x") + 
+  scale_color_manual(name = "Significant", values = c("grey", "blue")) + xlab("Value") + ylab("Variable") + theme_bw()
+
 
 ########################
 ########################
@@ -209,39 +210,12 @@ eqs2 <- do.call(rbind, eqs1)
 ####################################
 ####################################
 
-CI.abund <- ((mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) * (1/eab))
-CI.ivary <- (((icv - mydat$m.init.vary)/icv) * (1/eab))
+CI.abund <- ((mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]))
+CI.ivary <- (((icv - mydat$m.init.vary)/icv))
 CI.pers <- (((neq - mydat$pers)/neq) * (1/eab))
 CI.eig <- (((evi - mydat$eig)/evi) * (1/eab))
 
 
-#quant1 <- .9
-#G1 <- (abs(CI.pers) > quantile(abs(CI.pers), probs = quant1) & abs(CI.abund) > quantile(abs(CI.abund), probs = quant1) & (CI.eig) > quantile((CI.eig), probs = quant1) & abs(CI.ivary) > quantile(abs(CI.ivary), probs = quant1))*1
-#sum(G1)
-#G2 <- (abs(CI.pers) > quantile(abs(CI.pers), probs = quant1))*1
-#sum(G2)
-#G3 <- (abs(CI.abund) > quantile(abs(CI.abund), probs = quant1))*1
-#sum(G3)
-#G4 <- ((CI.eig) > quantile((CI.eig), probs = quant1))*1
-#sum(G4)
-#G5 <- (abs(CI.ivary) > quantile(abs(CI.ivary), probs = quant1))*1
-#sum(G5)
-
-
-#G1 <- (abs(CI.pers) > 100 & abs(CI.abund) > 100 & (CI.eig) > 100 & abs(CI.ivary) > 100)
-#sum(G1)
-#G2 <- (abs(CI.pers) > 100)*1
-#sum(G2)
-#G3 <- (abs(CI.abund) > 100)*1
-#sum(G3)
-#G4 <- ((CI.eig) > 100)*1
-#sum(G4)
-#G5 <- (abs(CI.ivary) > 100)*1
-#sum(G5)
-
-#t1 <- unlist(lapply(matuse, colSums))[ccak]
-#t2 <- unlist(lapply(matuse, rowSums))[ccak]
-#summary(glm(G~t1+t2, data = newd2, family = "binomial", na.action = "na.fail"))
 
 subAb <- abs(mydat$delta.biom/rep(sapply(eq.abund2, mean), sapply(eqcomm, length))[ccak]) > 1
 subIv <- ((icv - mydat$m.init.vary)/icv) > .1
@@ -255,7 +229,7 @@ newd2$G3 <- CI.abund#G3
 newd2$G4 <- CI.eig#G4
 newd2$G5 <- CI.ivary#G5
 
-fitCI <- glm(G~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2, family = "binomial", na.action = "na.fail")
+fitCI <- glm(G~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[-newd2$pers == 0,], family = "binomial", na.action = "na.fail")
 fitCI2 <- glm(G2~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subPe,], family = "gaussian", na.action = "na.fail")
 fitCI3 <- glm(G3~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subAb,], family = "gaussian", na.action = "na.fail")
 fitCI4 <- glm(G4~n.comp+abs(s.comp)+n.mut+s.mut+n.pred+s.pred+bet+close+neigh+ec+hub+pr, data = newd2[subEi,], family = "gaussian", na.action = "na.fail")
@@ -298,65 +272,13 @@ ggplot(dfall.1) + geom_segment(aes(x = lower, y = met, xend = upper, yend = met,
   geom_point(aes(x = coef, y = met, col = sig)) + facet_wrap(~mod, scales = "free_x") + 
   scale_color_manual(name = "Significant", values = c("grey", "blue")) + xlab("Value") + ylab("Variable") + theme_bw()
 
-####################################
-####################################
-##  Universal Interactions
+#####################################
+#####################################
+#####################################
 
 
+head(mydat)
 
-eqsp <- rep(sapply(eqcomm, length), sapply(eqcomm, length))
-
-
-eqs1 <- lapply(1:sum(use), function(x) cbind(sp = spp[use][[x]], eq = r2[use][[x]][1000,-1], x))
-eqs2 <- do.call(rbind, eqs1)
-
-c1 <- combn(1:181, 2)
-nshare <- c()
-nshare2 <- c()
-d1 <- c()
-d2 <- c()
-d3 <- c()
-d4 <- c()
-d5 <- c()
-for(i in 1:ncol(c1)){
-  nshare[i] <- sum(colSums(eqmat[c1[,i],]) == 2)/sum(colSums(eqmat[c1[,i],]) != 0)
-  shsp <- which(colSums(eqmat[c1[,i],]) == 2)
-  l1 <- eqs1[c1[,i]]
-  e1 <- l1[[1]][l1[[1]][,"sp"] %in% shsp, "eq"]
-  e2 <- l1[[2]][l1[[2]][,"sp"] %in% shsp, "eq"]
-  
-  d1[i] <- dist(rbind(e1, e2))
-  d2[i] <- dist(rbind(e1/sum(e1), e2/sum(e2)))
-  
-  l2 <- lapply(l1, function(x) x[,2] <- x[,2]/sum(x[,2]))
-  e1 <- l2[[1]][l1[[1]][,"sp"] %in% shsp]
-  e2 <- l2[[2]][l1[[2]][,"sp"] %in% shsp]
-  
-  nshare2[i] <- sum((e1 + e2)/2)
-  
-  d3[i] <- dist(rbind(e1, e2))
-  d4[i] <- dist(rbind(e1/sum(e1), e2/sum(e2)))
-  
-  eA <- e1/sum(e1)
-  eB <- e2/sum(e2)
-  m <- (eA + eB)/2
-  
-  d5[i] <- sqrt((sum(eA * log10(eA/m)) + sum(eB * log10(eB/m)))/2)
-}
-range(nshare)
-hist(nshare)
-par(mfrow = c(2,2))
-plot(d1~nshare, main = "Abs Abund")
-plot(d2~nshare, main = "Scaled Abs Abund")
-plot(d3~nshare, main = "Rel Abund")
-plot(d4~nshare, main = "Scaled Rel Abund")
-
-plot(d1~nshare2, main = "Abs Abund")
-plot(d2~nshare2, main = "Scaled Abs Abund")
-plot(d3~nshare2, main = "Rel Abund")
-plot(d4~nshare2, main = "Scaled Rel Abund")
-
-ggplot(data.frame(nshare2, d5), aes(x = nshare2, y = d5)) + geom_point(alpha = 0.1) + geom_smooth()
 
 
 #####################################
@@ -432,7 +354,10 @@ getShPath <- function(mat, ks){
   return(dat2)
 }
 
-getShPath.p <- function(mat, ks){
+mat = matuse[[1]]
+ks = ks3[[1]]
+ksB = ks4[[9]]
+getShPath.p <- function(mat, ks, ksB){
   test <- mat
   diag(test) <- 0
   test <- melt(test)
@@ -440,32 +365,62 @@ getShPath.p <- function(mat, ks){
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
   spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out", output = "epath")$epath, length))
-  dat1 <- lapply(1:nrow(spath1), function(x) cbind(x, spath1[x,-x], ks[x,-x]))
+  ksB <-lapply(ksB, function(x) if(sum(is.na(x)) >= 1){rep(NA, nrow(spath1))}else{x})
+  dat1 <- lapply(1:nrow(spath1), function(x) cbind(from = rep(x, length(spath1[x,-x])), to = (1:nrow(spath1))[-x], path = spath1[x,-x], dB = ks[x,-x],
+                                                   tte = ksB[[x]][-1]))
   dat2 <- do.call(rbind, dat1)
   
   return(dat2)
 }
 
 spaths <- lapply(1:sum(use), function(x) getShPath(matuse[[x]], ks2[[x]]))
-spaths.p <- lapply(1:sum(use), function(x) getShPath.p(matuse[[x]], ks3[[x]]))
+spaths.p <- lapply(1:sum(use), function(x) getShPath.p(matuse[[x]], ks3[[x]], ks4[[x]]))
+spaths.p <- lapply(1:length(spaths.p), function(x) cbind(comm = x, spaths.p[[x]]))
 spathsp <- do.call(rbind, spaths.p)
 hist(spathsp[spathsp[,3] == 0,2])
 
-path <- spa1[[1]]
-mat <- matuse[[1]]
-ipath <- function(mat, ks){
+
+path2first <- function(mat, t2e, ks){
   test <- mat
   diag(test) <- 0
   test <- melt(test)
   test <- test[test[,3] != 0,]
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
-  pathints <- list()
   extinctions <- which(apply(ks, 1, function(x) sum(!x, na.rm = T))!=0)
+  firstE <- sapply(t2e[extinctions], which.min)
+  
+  pl <- c()
   for(i in 1:length(extinctions)){
-    spa1 <- get.shortest.paths(g1, extinctions[i], which(!ks[extinctions[i],]), mode = "out", output = "epath")$epath
+    spa1 <- get.shortest.paths(g1, extinctions[i], firstE[i], mode = "out", output = "epath")$epath[[1]]
+    pl[i] <- length(spa1)
+  }
+  return(pl)
+}
+
+hist(unlist(lapply(1:sum(use), function(x) path2first(matuse[[x]], ks4[[x]], ks3[[x]]))))
+
+path <- spa1[[1]]
+mat <- matuse[[5]]
+ipath <- function(mat, ks){
+  test <- mat
+  #diag(test) <- 0
+  test <- melt(test)
+  test <- test[test[,3] != 0,]
+  g1 <- graph.edgelist(as.matrix(test)[,1:2])
+  
+  pathints <- list()
+  #extinctions <- which(apply(ks, 1, function(x) sum(!x, na.rm = T))!=0)
+  for(i in 1:length(V(g1))){
+    
+    #spa1 <- get.shortest.paths(g1, extinctions[i], which(!ks[extinctions[i],])[which(!ks[extinctions[i],]) %in% V(g1)],
+    #                           mode = "out", output = "epath")$epath
+    spa1 <- get.shortest.paths(g1, i, mode = "out", output = "epath")$epath
+
     vspa <- lapply(spa1, as.vector)
     pathints[[i]] <- lapply(vspa, function(x) test[x,3])
+    #print(i)
+
   }
   return(pathints)
 }
@@ -497,18 +452,34 @@ ipathAll <- function(mat, ks){
 }
 
 mpath <- list()
-mpath2 <- list()
+mpath2 <- list()http://127.0.0.1:17781/graphics/plot_zoom_png?width=1200&height=900
 for(i in 1:sum(use)){
-  mpath[[i]] <- do.call(rbind,lapply(ipath(matuse[[i]], ks3[[i]]), function(x) cbind(sapply(x, mean),sapply(x, length))))
-  mpath2[[i]] <- do.call(rbind,lapply(ipath(matuse[[i]], ks3[[i]]), function(x) t(sapply(x, function(y){c(sum(y < 0), mean(y[y < 0]), sum(y > 0), mean(y[y > 0]))}))))
+  #mpath[[i]] <- do.call(rbind,lapply(ipath(matuse[[i]], ks3[[i]]), function(x) cbind(sapply(x, mean),sapply(x, length))))
+  
+  pth <- ipath(matuse[[i]], ks3[[i]])
+  
+  dat <- lapply(pth, function(x) t(sapply(x, function(y){c(nNeg = sum(y < 0), mNeg = mean(y[y < 0]), nPos = sum(y > 0), mPos = mean(y[y > 0]))})))
+  
+  dat2 <- lapply(1:length(dat), function(x) data.frame(dat[[x]][-x,], from = rep(x, nrow(dat[[x]])-1), 
+                                                  to = (1:nrow(dat[[x]]))[-x], ext = ks3[[i]][x,-x], abund = ks2[[i]][x,]))
+  
+  mpath2[[i]] <- do.call(rbind, dat2)
   print(i)
 }
 
+a1 <- sapply(allg, function(x) length(V(x)))
+eg1 <- list()
+for(i in 1:length(allg)){
+  eg1[[i]] <- expand.grid((1:a1[i])[-1], 1:a1[i])
+}
 mp1 <- do.call(rbind, mpath)
 mp2 <- do.call(rbind, mpath2)
 mp2[is.nan(mp2)] <- 0
+
 head(mp2)
 plot(mp2[,c(1,3)])
+
+plot(mp2[,2:1])
 #####################################
 
 
