@@ -51,7 +51,7 @@ for(i in 1:1000){
 
 # which runs did not get messed up
 use <- sapply(r2, nrow) == 1000 & sapply(r2, function(x) sum(tail(x, 1)[-1] > 0) > 0)
-
+use[is.na(use)] <- FALSE
 # which species are present in equilibrial communities
 eqcomm <- sapply(1:sum(use), function(x) spp[use][[x]][which(r2[use][[x]][1000,-1] > 0)])
 

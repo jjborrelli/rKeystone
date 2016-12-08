@@ -35,7 +35,7 @@ lvmod <- function(times, state, parms){
 ext1 <- function (times, states, parms){
   with(as.list(states), {
     states[states < 10^-5] <- 0 
-    if(sum(states >= 100) >= 1){states<-rep(0, length(states))} 
+    #if(sum(states >= 100) >= 1){states<-rep(0, length(states))} 
     return(c(states))
   })
 }

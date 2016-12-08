@@ -12,10 +12,12 @@
 simstart <- Sys.time()
 source("~/Desktop/GitHub/rKeystone/RScripts/communitySIM.R")
 simend1 <- Sys.time()
+
 simend1 - simstart
 source("~/Desktop/GitHub/rKeystone/RScripts/keystoneSIM.R")
 simend2 <- Sys.time()
 simend2 - simend1
+save.image("~/Desktop/simexT-5.Rdata")
 ###
 ### ANALYSIS
 ###
@@ -31,7 +33,7 @@ cv.eq <- sapply(dyn, function(x) apply(x[990:1000,-1][,x[1000,-1] > 0], 2, sd)/(
 #range(colMeans(cv.eq))
 hist(unlist(cv.eq))
 
-
+eq.abund2 <- (lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))
 # matrix of species found in each local equilibrium community
 # can be used to determine compositional similarity of communities
 eqmat <- matrix(0, nrow = sum(use), ncol = S)                       # initialize eqmat
@@ -98,7 +100,8 @@ ccak <- complete.cases(allks)                                       # only use c
 
 spin3 <- spin2[ccak,]
 eq.abund <- unlist(lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))[ccak]
-eq.abund2 <- (lapply(dyn, function(x) x[1000,-1][x[1000,-1] > 0]))
+
+
 
 ########################
 # 
@@ -452,7 +455,7 @@ ipathAll <- function(mat, ks){
 }
 
 mpath <- list()
-mpath2 <- list()http://127.0.0.1:17781/graphics/plot_zoom_png?width=1200&height=900
+mpath2 <- list()
 for(i in 1:sum(use)){
   #mpath[[i]] <- do.call(rbind,lapply(ipath(matuse[[i]], ks3[[i]]), function(x) cbind(sapply(x, mean),sapply(x, length))))
   
