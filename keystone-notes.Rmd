@@ -1,0 +1,72 @@
+---
+title: "Keystoneness"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### What is a keystone species? 
+
+> A keystone species is one whose impact on their community is disproportionately large relative to their abundance. 
+
+In the literature keystone species have been described in a number of ways. Mary Power (CITE) suggested that the the metric of Community Importance (CI) could be useful for identifying putative keystones. CI is defined as: 
+
+$$
+CI_i = \frac{t_N - t_D}{t_N} * (\frac{1}{p_i}),
+$$
+
+where $t_N$ is the intitial value of some community trait, $t_D$ is the value of that trait after the removal of the species of interest, and $p_i$ is the relative abundance of species *i*. 
+
+Other ecologists have instead chosen to focus on network topology to define keystone species. Topologically, keystones are typically described as those species that are network hubs, they interact with many other species. 
+
+Or keystone species may be defined by their performing a specific function, such as *MICROBE NAME HERE* breaking down *THING IT BREAKS DOWN* in the gut. 
+
+#### Food webs
+- Christianou and Ebenman 2005. Keystone species and vulnerable species in ecological communities: strong or weak interactors? Journal of Theoretical Biology 235:95-103.  
+Looked at the number of secondary extinctions as a function of the strength of its interactions with other species. The largest number of secondary extinctions resulted from removals of: 
+1. rare species interacting strongly with many consumers  
+2. abundant basal species interacting weakly with consumers   
+3. abundant intermediate species interacting strongly with many resources  
+
+Keystone status also context dependent. 
+
+- Jordan 2009. Keystone species and food webs. Phil. Trans. R. Soc. B 364: 1733-1741.  
+Discussion of the role network analysis can play to characterize the interaction structure of species in complex networks. Specific focus is on centrality indices to identify keystone species. 
+
+- Jian and Zhang 2015. Determiniation of keystone species in CSM food web: a toppological analysis of network structure. Network Biology 5: 13-33.  
+Looking for keystones in the Carpinteria Salt Marsh food web. Focus is on centrality indices with a comparison to biological experiments. Found that degree centrality and closeness centrality combined can better identify keystones.  
+
+- Valls et al. 2015. Keystone species: toward an operational concept for marine biodiversity conservation. Ecological Monographs 85: 29-47.   
+Trying to make the keystone species concept useful for conservation of marine biodiversity. Create a definition of keystone and derive new functional index for keystoneness. Also identify limitations of previous estimates of keystoneness.  
+
+- Zhao et al. 2016. Weighting and indirect effects identify keystone species in food webs. Ecology Letters 19: 1032-1040.  
+They note the focus on hubs, and lack of focus on link weights and indirect interactions. Use a dynamical model to look at change in stability following removal. Incorporating interactions (direct and indirect) were between than hub focus alone.  
+
+- Jonsson et al. 2015. The context dependency of species keystone status during food web disassembly. Food Webs 5: 1-10. 
+Focus is on loss of species and resulting secondary extinctions. Looks at the importance of 11 species traits during the collapse of the network. The most important trait changes as the web collapses. 
+
+- Jordan et al. 2012. A reliability theoretical quest for keystones. Oikos 86: 453-462.  
+Keystones are more functionally important. Develop a keystone index  in food web flow networks, but only works well if trophic interactions are of prime importance.  
+
+#### Mutualistic networks
+- Aurelio et al. 2014. Keystone species in seed dispersal networks are mainly determined by dietary specialization. Oikos.  
+A keystone is one that is "relatively more important than others for maintaining community structure and ecosystem functioning." Looked at centrality as a proxy for a species; relative importance for seed dispersal networks. They link centrality to dietary specialization using mixed model to show centrality explained best by diet specialization over body mass and range size. 
+
+
+#### General/Review  
+- Cottee-Jones and Whittaker 2012. The keystone species concept: a critical appraisal. Frontiers of Biogeography 4: 217-220.  
+Describes the "considerable confusion" about what a keystone species actually is. Focus is on the history of term and summary of the many definitions.  
+
+- Davic 2003. Linking keystone species and functional groups: a new operational definition of the keystone species concept. Conservation Ecology 7: r11.  
+Redefines keystone for a priori prediction. Defined as a strongly interacting species whose top down effect on diversity and competition is large relative to biomass dominance within a functional group. 
+
+
+### How can we identify keystone species? 
+
+**What kind of impact?** 
+1. Persistence
+2. Local Stability
+3. Abundance
+4. Variability
