@@ -3,7 +3,7 @@
 # alt save 10-26-16
 # ms save 11-8-16 == example3
 # save.image("~/Desktop/simex2.Rdata") 
-# load("~/Desktop/simex2.Rdata")
+# load("~/Desktop/simexT-5.Rdata")
 
 
 ###
@@ -343,19 +343,34 @@ confusion(testdat$e, plda$class)
 #####################################
 library(reshape2)
 
-getShPath <- function(mat, ks){
+getShPath <- function(mat, ks, ksA, eqa){
   test <- mat
   diag(test) <- 0
   test <- melt(test)
   test <- test[test[,3] != 0,]
   g1 <- graph.edgelist(as.matrix(test)[,1:2])
   
+  ks <- lapply(ks, function(x) if(sum(is.na(x))>0){rep(NA, length(eqa))}else{x})
+  
   spath1 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out", output = "epath")$epath, length))
-  dat1 <- lapply(1:nrow(spath1), function(x) cbind(x, spath1[x,-x], ks[x,]))
+  spath2 <- sapply(1:length(V(g1)), function(x) sapply(get.shortest.paths(g1, x, mode = "out", weights = abs(test[,3]), output = "epath")$epath, length))
+  dat1 <- lapply(1:nrow(spath1), function(x) cbind(from = rep(x, length(eqa)-1), to = (1:nrow(spath1))[-x], spuw = spath1[x,-x], spw = spath2[x,-x], d1e = ksA[x,-c(1,(x+1))], dstrt = eqa[-x], tte= ks[[x]][-1]))
   dat2 <- do.call(rbind, dat1)
   
   return(dat2)
 }
+x=2
+mat = matuse[[x]]
+ks = ks4[[x]]
+ksA = ks5[[x]]
+eqa = eq.abund2[[x]]
+
+spaths <- lapply(1:sum(use), function(x) getShPath(matuse[[x]], ks4[[x]], ks5[[x]], eq.abund2[[x]]))
+spaths1 <- lapply(1:sum(use), function(x) cbind(spaths[[x]], comm = x))
+spaths2 <- do.call(rbind, spaths1)
+plot(aggregate(spaths2[,"spw"], list(spaths2[,"tte"]), mean))
+plot(spaths2[,"spw"]~spaths2[,"tte"])
+
 
 mat = matuse[[1]]
 ks = ks3[[1]]
@@ -376,7 +391,7 @@ getShPath.p <- function(mat, ks, ksB){
   return(dat2)
 }
 
-spaths <- lapply(1:sum(use), function(x) getShPath(matuse[[x]], ks2[[x]]))
+
 spaths.p <- lapply(1:sum(use), function(x) getShPath.p(matuse[[x]], ks3[[x]], ks4[[x]]))
 spaths.p <- lapply(1:length(spaths.p), function(x) cbind(comm = x, spaths.p[[x]]))
 spathsp <- do.call(rbind, spaths.p)
