@@ -192,6 +192,20 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
   #delta.biom <- sapply(rem, function(x) if(nrow(x) == 1000){mean(x[1000,-1] - mean(init.biom))}else{NA})
   delta.biom <- colMeans(delta.eq)
   
+  deq.ex1 <- matrix(nrow = nrow(initial1), ncol = nrow(initial1)+1)
+  for(i in 1:length(rem)){
+    if(nrow(rem[[i]]) == 1000){
+      ex1 <- min(tte[[i]])
+      ex1[ex1!=1000] <- ex1[ex1!=1000]+1 
+      deq.ex1[i,-(i+1)] <- rem[[i]][ex1,]
+    }else{
+      deq.ex1[i,-(i+1)] <- rep(NA, length(init.biom[]))
+    }
+    print(i)
+  }
+  
+
+  
   # get coefficient of variation for each species following each removal (last 200 timesteps)
   vary <- lapply(rem, function(x) if(nrow(x) == 1000){apply(x[800:1000,-1], 2, function(y) sd(y)/mean(y))}else{NA})
   # mean CV following each removal
@@ -210,7 +224,7 @@ keystone <- function(x, dyn, eqcomm, mats, growth){
   # get data matrix for abundance change, variability, and persistence
   dat <- cbind(delta.biom, mean.vary, m.init.vary, pers)  
   
-  return(list(dat, t(delta.eq), is.eq, tte))
+  return(list(dat, t(delta.eq), is.eq, tte, deq.ex1))
 }
 
 
