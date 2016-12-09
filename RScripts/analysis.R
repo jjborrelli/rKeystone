@@ -499,8 +499,8 @@ plot(mp2[,c(1,3)])
 
 plot(mp2[,2:1])
 #####################################
-
-
+ks3[[2]][walktrap.community(g1, weights = abs(test[,3]))[3][[1]],walktrap.community(g1, weights = abs(test[,3]))[3][[1]]]
+ks3[[2]][walktrap.community(g1, weights = abs(test[,3]))[3][[1]],-walktrap.community(g1, weights = abs(test[,3]))[3][[1]]]
 
 #####################################
 #####################################
