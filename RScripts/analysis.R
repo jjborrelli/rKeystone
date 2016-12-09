@@ -266,7 +266,7 @@ fitCI3.1 <- glm(delta.biom~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = s
 fitCI4.1 <- glm(eig~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
 fitCI5.1 <- glm(m.init.vary~pos1+neg1+spos1+sneg1+pos2+neg2+spos1+sneg2, data = spi2, family = "gaussian", na.action = "na.fail")
 
-flist.1 <- list(fitCI.1, fitCI2.1, fitCI3.1, fitCI4.1, fitCI5.1)
+flist.1 <- list( fitCI2.1, fitCI3.1, fitCI4.1, fitCI5.1)
 fnames <- c("destab", "pers", "abund", "eig", "ivary")
 
 dfall.1 <- multimod(flist.1, fnames)
