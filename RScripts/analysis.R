@@ -501,6 +501,6 @@ plot(mp2[,2:1])
 #####################################
 ks3[[2]][walktrap.community(g1, weights = abs(test[,3]))[3][[1]],walktrap.community(g1, weights = abs(test[,3]))[3][[1]]]
 ks3[[2]][walktrap.community(g1, weights = abs(test[,3]))[3][[1]],-walktrap.community(g1, weights = abs(test[,3]))[3][[1]]]
-
+plot(induced_subgraph(g1, walktrap.community(g1, weights = abs(test[,3]))[3][[1]]))
 #####################################
 #####################################
