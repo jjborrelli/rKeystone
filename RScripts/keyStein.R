@@ -22,6 +22,11 @@ ext1 <- function (times, states, parms){
 ints1 <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 grow1 <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-Growth.csv")
 
+
+ints1 <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+grow1 <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-Growth.csv")
+
+
 parms <- list(alpha = unlist(grow1), m = as.matrix(ints1))
 
 g1 <- graph.adjacency((parms$m), weighted = T, diag = F)
