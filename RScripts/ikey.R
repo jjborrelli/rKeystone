@@ -57,13 +57,17 @@ sim_community <- function(times, state, parms, eq = lvmod, ex = ext1){
 
 
 SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+#SteinInt <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
-
-c1 <- make_community(50, .3, mean(INTs), sd(INTs))
-iA <- runif(nrow(c1))
-iP <- list(alpha = runif(nrow(c1), .1, 1), m = c1)
-
-sc1 <- sim_community(times = seq(1,500,1), state = iA, parms = iP)
+cond <- FALSE
+while(!cond){
+  c1 <- make_community(50, .3, mean(INTs), sd(INTs))
+  iA <- runif(nrow(c1))
+  iP <- list(alpha = runif(nrow(c1), .1, 1), m = c1)
+  
+  sc1 <- sim_community(times = seq(1,500,1), state = iA, parms = iP)
+  if(nrow(sc1) == 500){cond <- TRUE}
+}
 matplot(sc1, typ = "l")
 
 scl <- list()
@@ -116,4 +120,6 @@ for(i in 1:nrow(prs)){
     pl = spaths[prs[i,1], prs[i,2]], imed = ipaths.med[prs[i,1], prs[i,2]], isum = ipaths.sum[prs[i,1], prs[i,2]], iprod = ipaths.mult[prs[i,1], prs[i,2]])
 }
 colnames(res) <- c("rem", "trgt", "bio.rem", "bio.trgt", "dbio.trgt", "pl", "imed", "isum", "iprod")
-head(res)
+resdf <- as.data.frame(res)
+diff1 <- (resdf$dbio.trgt - resdf$bio.trgt)/resdf$bio.trgt
+plot(diff1~resdf$isum)
