@@ -188,4 +188,6 @@ for(i in 1:10){
 }
 
 diff1 <- ((pi1$dbio.trgt - pi1$bio.trgt)/pi1$bio.trgt)*100
+diff2 <- ((pi1$dbio.trgt)/pi1$bio.trgt)
+hist(diff2[pi1$pl != 0])
 aggregate(diff1, list(pi1$isign), median)
