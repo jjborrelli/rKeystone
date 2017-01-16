@@ -80,6 +80,23 @@ spp_remove <- function(sc1, iP, t1, track.progress = FALSE){
   return(scl)
 }
 
+itypes.sp <- function(x){
+  mm1 <- matrix(nrow = nrow(x), ncol = 5)
+  for(i in 1:nrow(x)){
+    i1 <- x[i, -i]
+    i2 <- x[-i, i]
+    
+    comp <- sum(i1 < 0 & i2 < 0)
+    mut <- sum(i1 > 0 & i2 > 0)
+    pred <- sum(i1 > 0 & i2 < 0 | i1 < 0 & i2 > 0)
+    amens <- sum(i1 < 0 & i2  == 0 | i1 == 0 & i2 < 0)
+    comm <- sum(i1 > 0 & i2  == 0 | i1 == 0 & i2 > 0)
+    
+    mm1[i,] <- c(comp = comp, mut = mut, pred = pred, amens = amens, comm = comm)
+  }
+  return(mm1)
+}
+
 path_ints <- function(c1, sc1, scl, iP){
   spp <- which(sc1[nrow(sc1),] > 0)
   g1 <- graph.adjacency(abs(c1), weighted = T, diag = F)
@@ -87,6 +104,7 @@ path_ints <- function(c1, sc1, scl, iP){
   idegs <- degree(g1, mode = "in")
   betw <- betweenness(g1, weights = E(g1)$weight)
   gr <- iP$alpha
+  itysp <- itypes.sp(c1)
   
   spaths <- matrix(nrow = length(spp), ncol = length(spp))
   ipaths.med <- matrix(0, nrow = length(spp), ncol = length(spp))
@@ -98,13 +116,18 @@ path_ints <- function(c1, sc1, scl, iP){
     spaths[i,] <- sapply(shp, length)
     shpv <- shortest_paths(g1, spp[i], spp[-i], mode = "out", output = "vpath")$vpath
     ipa <- lapply(shpv, function(x){
-      e1 <- cbind(x[1:(length(x)-1)],x[2:(length(x))])
-      ipa <- c()
-      for(i in 1:nrow(e1)){
-        ipa[i] <- c1[e1[i,1], e1[i,2]]
+      if(length(x) == 0){
+        return(0)
+      }else{
+        e1 <- cbind(x[1:(length(x)-1)],x[2:(length(x))])
+        ipa <- c()
+        for(i in 1:nrow(e1)){
+          ipa[i] <- c1[e1[i,1], e1[i,2]]
+        }
+        return(ipa)
       }
-      return(ipa)
     })
+    
     ipaths.med[i, spp %in% spp[-i]] <- sapply(ipa, median)
     ipaths.sum[i, spp %in% spp[-i]] <- sapply(ipa, sum)
     ipaths.mult[i, spp %in% spp[-i]] <- sapply(ipa, function(x) abs(prod(x))^(1/length(x))*sign(prod(x)))
@@ -113,12 +136,15 @@ path_ints <- function(c1, sc1, scl, iP){
   }
   
   prs <- expand.grid(1:length(spp),1:length(spp))
-  res <- matrix(nrow = nrow(prs), ncol = 18)
+  res <- matrix(nrow = nrow(prs), ncol = 20)
   ipathl <- list()
+  i.ty <- list()
   for(i in 1:nrow(prs)){
     rspp <- which(spp %in% as.vector(spp)[prs[i,1]])
     if(nrow(scl[[rspp]]) < nrow(sc1)){
-      res[i,] <- c(rspp, rem = as.vector(spp)[prs[i,1]], trgt = as.vector(spp)[prs[i,2]],NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+      res[i,] <- c(rspp, rem = as.vector(spp)[prs[i,1]], trgt = as.vector(spp)[prs[i,2]],NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+      ipathl[[i]] <- NA
+      i.ty[[i]] <- rep(NA, 10)
       next
     }
     res[i,] <- c(index = rspp, rem = as.vector(spp)[prs[i,1]], trgt = as.vector(spp)[prs[i,2]],
@@ -128,14 +154,18 @@ path_ints <- function(c1, sc1, scl, iP){
                  odeg.rem = odegs[as.vector(spp)[prs[i,1]]], odeg.trgt = odegs[as.vector(spp)[prs[i,2]]],
                  ideg.rem = idegs[as.vector(spp)[prs[i,1]]], ideg.trgt = idegs[as.vector(spp)[prs[i,2]]],
                  bet.rem = betw[as.vector(spp)[prs[i,1]]], bet.trgt = betw[as.vector(spp)[prs[i,2]]], 
-                 r.rem = gr[as.vector(spp)[prs[i,1]]], r.trgt = gr[as.vector(spp)[prs[i,2]]])
+                 r.rem = gr[as.vector(spp)[prs[i,1]]], r.trgt = gr[as.vector(spp)[prs[i,2]]], 
+                 self.rem = diag(c1)[as.vector(spp)[prs[i,1]]], self.trgt = diag(c1)[as.vector(spp)[prs[i,2]]])
     ipathl[[i]] <- ipaths.sign[prs[i,1], prs[i,2]]
+    i.ty[[i]] <- c(itysp[as.vector(spp)[prs[i,1]],], itysp[as.vector(spp)[prs[i,2]],])
   }
   colnames(res) <- c("index", "rem", "trgt", "bio.rem", "bio.trgt", "dbio.trgt", "pl", "imed", "isum", "iprod", "odeg.rem", "odeg.trgt", "ideg.rem", "ideg.trgt",
-                     "bet.rem", "bet.trgt", "r.rem", "r.trgt")
+                     "bet.rem", "bet.trgt", "r.rem", "r.trgt", "self.rem", "self.trgt")
   resdf <- as.data.frame(res)
   resdf$isign <- unlist(ipathl)
-  
+  intstyp <- do.call("rbind", i.ty)
+  colnames(intstyp) <- c("comp.rem","mut.rem","pred.rem","amens.rem","comm.rem","comp.trgt","mut.trgt","pred.trgt","amens.trgt","comm.trgt")
+  resdf <- data.frame(resdf, intstyp)
   return(resdf)
 }
 
@@ -165,21 +195,23 @@ SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
 
-e1 <- get_eqcomm(S = 50, C = .3, INTs = INTs, t1 = 1:2000, plot = F)
+e1 <- get_eqcomm(S = 50, C = .05, INTs = INTs, t1 = 1:2000, plot = F)
 sr1 <- spp_remove(sc1 = e1$comm.dyn, iP = e1$init.parms, t1 = 1:2000)
 
-pi1 <- path_ints(c1 = e1$comm.mat, sc1 = e1$comm.dyn, scl = sr1)
+pi1 <- path_ints(c1 = e1$comm.mat, sc1 = e1$comm.dyn, scl = sr1, iP = e1$init.parms)
 head(pi1)
 
 summary(lm((cdiv(sr1, e1$comm.dyn[2000,], meas = "shannon")/100)~itypes.sp(e1$comm.mat)[unique(pi1$rem),]))
 
+C.list <- rep(c(.05,.15,.25), each = 20)
 D.all <- list()
 i.all <- list()
-for(i in 1:10){
-  e1 <- get_eqcomm(S = 50, C = .3, INTs = INTs, t1 = 1:2000, plot = F)
+pi1 <- list()
+for(i in 1:60){
+  e1 <- get_eqcomm(S = 50, C = C.list[i], INTs = INTs, t1 = 1:2000, plot = F)
   sr1 <- spp_remove(sc1 = e1$comm.dyn, iP = e1$init.parms, t1 = 1:2000)
   
-  pi1 <- path_ints(c1 = e1$comm.mat, sc1 = e1$comm.dyn, scl = sr1, iP = e1$init.parms)
+  pi1[[i]] <- path_ints(c1 = e1$comm.mat, sc1 = e1$comm.dyn, scl = sr1, iP = e1$init.parms)
   
   D.all[[i]] <- cdiv(sr1, e1$comm.dyn[2000,], meas = "shannon")
   i.all[[i]] <- itypes.sp(e1$comm.mat)[unique(pi1$rem),]
@@ -191,3 +223,14 @@ diff1 <- ((pi1$dbio.trgt - pi1$bio.trgt)/pi1$bio.trgt)*100
 diff2 <- ((pi1$dbio.trgt)/pi1$bio.trgt)
 hist(diff2[pi1$pl != 0])
 aggregate(diff1, list(pi1$isign), median)
+boxplot((log(abs(diff1)) *sign(diff1))~pi1$isign, las = 2)
+
+pi1$diff <- ((pi1$dbio.trgt - pi1$bio.trgt))
+
+form1 <- diff~bio.rem+bio.trgt+pl+imed+isum+iprod+odeg.rem+odeg.trgt+ideg.rem+ideg.trgt+bet.rem+bet.trgt+r.rem+r.trgt+self.rem+self.trgt+comp.rem+mut.rem+pred.rem+amens.rem+comm.rem+comp.trgt+mut.trgt+pred.trgt+amens.trgt+comm.trgt
+
+form2 <- diff~imed+r.rem
+
+cart1 <- rpart::rpart(form1, data = pi1, method = "anova")
+plot(cart1)
+text(cart1, use.n=TRUE, all=TRUE, cex=.8)
