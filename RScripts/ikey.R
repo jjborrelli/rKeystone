@@ -94,7 +94,22 @@ itypes.sp <- function(x){
     
     mm1[i,] <- c(comp = comp, mut = mut, pred = pred, amens = amens, comm = comm)
   }
+  colnames(mm1) <- c("comp", "mut", "pred", "amens", "comm")
   return(mm1)
+}
+
+
+itypes <- function(x){
+  i1 <- x[upper.tri(x)]
+  i2 <- t(x)[upper.tri(x)] 
+  
+  comp <- sum(i1 < 0 & i2 < 0)
+  mut <- sum(i1 > 0 & i2 > 0)
+  pred <- sum(i1 > 0 & i2 < 0 | i1 < 0 & i2 > 0)
+  amens <- sum(i1 < 0 & i2  == 0 | i1 == 0 & i2 < 0)
+  comm <- sum(i1 > 0 & i2  == 0 | i1 == 0 & i2 > 0)
+  
+  return(data.frame(comp = comp, mut = mut, pred = pred, amens = amens, comm = comm))
 }
 
 path_ints <- function(c1, sc1, scl, iP){
@@ -203,13 +218,17 @@ head(pi1)
 
 summary(lm((cdiv(sr1, e1$comm.dyn[2000,], meas = "shannon")/100)~itypes.sp(e1$comm.mat)[unique(pi1$rem),]))
 
+sapply(sr1, function(x) log10(sum(x[2000,]))/log10(sum(x[1,])))
+
+
 t0 <- Sys.time()
-C.list <- rep(c(.05,.15,.25), each = 20)
+C.list <- rep(c(.05,.15,.25), each = 30)
 D.all <- list()
 i.all <- list()
 pi1 <- list()
-for(i in 1:60){
-  e1 <- get_eqcomm(S = 50, C = C.list[i], INTs = INTs, t1 = 1:2000, plot = F)
+logRR <- list()
+for(i in 1:90){
+  e1 <- get_eqcomm(S = 30, C = C.list[i], INTs = INTs, t1 = 1:2000, plot = F)
   sr1 <- spp_remove(sc1 = e1$comm.dyn, iP = e1$init.parms, t1 = 1:2000)
   
   pi1[[i]] <- path_ints(c1 = e1$comm.mat, sc1 = e1$comm.dyn, scl = sr1, iP = e1$init.parms)
@@ -217,8 +236,10 @@ for(i in 1:60){
   pi1[[i]]$N <- ifelse(nrow(e1$comm.dyn) == 2000, sum(e1$comm.dyn[2000,] != 0), NA)
   pi1[[i]]$Cin <- ifelse(nrow(e1$comm.dyn) == 2000, C.list[i], NA)
   
+  logRR[[i]] <- cbind(lrr = sapply(sr1, function(x){ifelse(nrow(x) == 2000, log10(sum(x[2000,]))/log10(sum(x[1,])), NA)}), mu = sapply(sr1, function(x){ifelse(nrow(x) == 2000, 1 - abs(sum(x[1,] - x[2000,]))/sum(abs(x[1,] - x[2000,])), NA)}), itypes.sp(e1$comm.mat)[which(e1$comm.dyn[2000,] != 0),])
+  
   if(nrow(e1$comm.dyn) == 2000){
-    c.alt <- sum(sign(abs(e1$comm.dyn[which(e1$comm.dyn[2000,] != 0), which(e1$comm.dyn[2000,] != 0)])))/(sum(e1$comm.dyn[2000,] != 0)*sum(e1$comm.dyn[2000,] != 0))
+    c.alt <- sum(sign(abs(e1$comm.mat[which(e1$comm.dyn[2000,] != 0), which(e1$comm.dyn[2000,] != 0)])))/(sum(e1$comm.dyn[2000,] != 0)*sum(e1$comm.dyn[2000,] != 0))
   }else{
     c.alt <- NA
   }
@@ -230,29 +251,26 @@ for(i in 1:60){
   print(paste(Sys.time(), "-----------------", i, "-----------------"))
 }
 t1 <- Sys.time()
-diff1 <- ((pi1$dbio.trgt - pi1$bio.trgt)/pi1$bio.trgt)*100
-diff2 <- ((pi1$dbio.trgt)/pi1$bio.trgt)
-hist(diff2[pi1$pl != 0])
-aggregate(diff1, list(pi1$isign), median)
-boxplot((log(abs(diff1)) *sign(diff1))~pi1$isign, las = 2)
-
-pi1$diff <- ((pi1$dbio.trgt - pi1$bio.trgt))
 
 pi2 <- do.call("rbind", pi1)
+pi2 <- pi2[-which(pi2$rem == pi2$trgt),]
 pi2$diff <- ((pi2$dbio.trgt - pi2$bio.trgt))/pi2$bio.trgt
-form1 <- diff~bio.rem+bio.trgt+pl+imed+isum+iprod+odeg.rem+odeg.trgt+ideg.rem+ideg.trgt+bet.rem+bet.trgt+r.rem+r.trgt+self.rem+self.trgt+comp.rem+mut.rem+pred.rem+amens.rem+comm.rem+comp.trgt+mut.trgt+pred.trgt+amens.trgt+comm.trgt
 
-form2 <- diff~imed+r.rem
 
-cart1 <- rpart::rpart(form1, data = pi2[complete.cases(pi2),][which(pi2$bio.trgt <= 101),], method = "anova")
+form1 <- diff2~bio.rem+bio.trgt+pl+imed+isum+iprod+odeg.rem+odeg.trgt+ideg.rem+ideg.trgt+bet.rem+bet.trgt+r.rem+r.trgt+self.rem+self.trgt+comp.rem+mut.rem+pred.rem+amens.rem+comm.rem+comp.trgt+mut.trgt+pred.trgt+amens.trgt+comm.trgt+Cin+Cadj+N
+
+form2 <- diff~imed+log(bio.rem/bio.trgt)
+
+cart1 <- rpart::rpart(form1, data = pi2, method = "anova")
 plot(cart1)
 text(cart1, use.n=TRUE, all=TRUE, cex=.8)
+summary(cart1)
 
 pi3 <- pi2[which(pi2$rem != pi2$trgt),] 
 pi3$ext <-pi3$dbio.trgt == 0
 
-form1 <- ext~bio.rem+bio.trgt+pl+imed+isum+iprod+odeg.rem+odeg.trgt+ideg.rem+ideg.trgt+bet.rem+bet.trgt+r.rem+r.trgt+self.rem+self.trgt+comp.rem+mut.rem+pred.rem+amens.rem+comm.rem+comp.trgt+mut.trgt+pred.trgt+amens.trgt+comm.trgt
+form1 <- ext~bio.rem+bio.trgt+pl+imed+isum+iprod+odeg.rem+odeg.trgt+ideg.rem+ideg.trgt+bet.rem+bet.trgt+r.rem+r.trgt+self.rem+self.trgt+comp.rem+mut.rem+pred.rem+amens.rem+comm.rem+comp.trgt+mut.trgt+pred.trgt+amens.trgt+comm.trgt+Cin+Cadj+N
 
-cart1 <- rpart::rpart(form1, data = pi3[complete.cases(pi3),][which(pi3$bio.trgt <= 101),], method = "anova")
+cart1 <- rpart::rpart(form1, data = pi3[complete.cases(pi3),][which(pi3$bio.trgt <= 101),], method =  "anova")
 plot(cart1)
 text(cart1, use.n=TRUE, all=TRUE, cex=.8)
