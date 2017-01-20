@@ -1,4 +1,12 @@
 library(vegan)
+library(data.table)
+library(igraph)
+library(deSolve)
+
+SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+#SteinInt <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
+
 
 t0 <- Sys.time()
 Ns <- rep(c(10, 30, 50, 70, 90), each = 10)
@@ -11,7 +19,7 @@ inds <- list()
 for(i in 1:nrow(nc)){
   eqc <- get_eqcomm(nc[i,1], nc[i,2], INTs, 1:2000)
   
-  if(any(is.nan(eqc))){
+  if(any(is.nan(eqc$comm.dyn))){
     res[[i]] <- data.frame(co = i, N.ext = NA, t.bio = NA, exp.bio = NA, ShD = NA, iShD = NA, eig.i = NA, eig.f = NA,
                            N = NA, C = NA, Lin = NA, Lfi = NA, 
                            gr.in = NA, di.in = NA, (itypes(eqc$comm.mat)),
