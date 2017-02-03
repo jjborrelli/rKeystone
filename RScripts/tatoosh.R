@@ -226,8 +226,14 @@ for(comm in 1:length(dyn)){
 posint <- rbindlist(lapply(ity, function(x) as.data.frame(x[,c(1,2,3,4,5)])))
 ex1 <- unlist(n.exts)
 
+cval <- c()
+for(i in 1:22){
+  co <- i
+  ctest <- cor.test(abs(tapply(spr[[co]]$fBio - spr[[co]]$iBio, list(spr[[co]]$spR), median)), tapply(spr[[co]]$cv10, list(spr[[co]]$spR), median, na.rm = T))
+  cval[i] <- ctest$estimate 
+}
+co <- 14
 
-tapply(spr[[1]]$fBio - spr[[1]]$iBio, list(spr[[1]]$spR), median)
 
 comm <- 3
 par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]])
