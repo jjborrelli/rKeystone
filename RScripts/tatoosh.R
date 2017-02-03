@@ -149,7 +149,7 @@ plot(betsur1$B2, betsur1$A)
 # GLM Predicting extinction risk as a funciton of variability
 
 coefvar <- function(dyna){
-  cv10 <- apply(dyna[1:10,], 2, function(x) sd(x)/mean(x))
+  cv10 <- apply(dyna[1:5,], 2, function(x) sd(x)/mean(x))
   cv100 <- apply(dyna[1:100,], 2, function(x) sd(x)/mean(x))
   cv1k <- apply(dyna[1:1000,], 2, function(x) sd(x)/mean(x))
   cvfi <- apply(tail(dyna, 100), 2, function(x) sd(x)/mean(x))
@@ -200,8 +200,36 @@ remove.sp <- function(sp, parms, states){
 }
 
 
+spr <- list()
+errs <- list()
+ity <- list()
+n.exts <- list()
+for(comm in 1:length(dyn)){
+  par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]])
+  st1 <- condyn[[comm]][2000,]
+  
+  dflist <- list()
+  for(i in 1:nrow(par$m)){
+    dflist[[i]] <- remove.sp(i, parms = par, states = st1)
+    print(i)
+  }
+  
+  errs[[comm]] <- is.na(dflist)
+  ity[[comm]] <- itypes.sp(par$m)[!errs[[comm]],]
+  dflist <- dflist[!is.na(dflist)]
+  spr[[comm]] <- rbindlist(dflist)
+  n.exts[[comm]] <- sapply(dflist, function(x) sum(!x$exts)-1)
+  
+  cat("---------------------|| ", comm, " ||---------------------")
+}
 
-comm <- 2
+posint <- rbindlist(lapply(ity, function(x) as.data.frame(x[,c(1,2,3,4,5)])))
+ex1 <- unlist(n.exts)
+
+
+tapply(spr[[1]]$fBio - spr[[1]]$iBio, list(spr[[1]]$spR), median)
+
+comm <- 3
 par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]])
 st1 <- condyn[[comm]][2000,]
 
@@ -210,6 +238,7 @@ for(i in 1:nrow(par$m)){
   dflist[[i]] <- remove.sp(i, parms = par, states = st1)
   print(i)
 }
+errs <- is.na(dflist)
 dflist <- dflist[!is.na(dflist)]
 spr <- rbindlist(dflist)
 
@@ -221,10 +250,11 @@ points(inv.logit(cb1$fit+1.96*cb1$se.fit)~spr$cv10[!is.na(spr$cv10)], col = "blu
 points(inv.logit(cb1$fit-1.96*cb1$se.fit)~spr$cv10[!is.na(spr$cv10)], col = "blue", pch = 18)
 #
 
+plot(spr$cv10, spr$t10Bio)
 
-
-
-
+summary(lm(sapply(dflist, function(x) sum(!x$exts)-1)~(itypes.sp(par$m)[,5]+itypes.sp(par$m)[,2])))
+plot(spr$cv10, spr$cv100)
+abline(a = 0, b = 1, xpd = F)
 
 ################################################################################################################
 ################################################################################################################
