@@ -137,6 +137,12 @@ ags.i <- lapply(tats2, function(x) graph.adjacency(abs(sign(x)), diag = F))
 bet.i <- lapply(1:length(ags.i), function(x) betweenness(ags.i[[x]]))
 bet.f <- lapply(ags.rv, betweenness)
 
+ityspl <- rbindlist(lapply(tats2, function(x) as.data.frame(itypes.sp(x))))
+ityspl2 <- as.data.frame(t(apply(ityspl, 1, function(x) x/sum(x))))
+plot(betsur$S~ityspl2$V4)
+points(glm(betsur$S~ityspl2$V4, family = "binomial")$fitted.values~ityspl2$V4, pch = 20)
+
+
 betsur <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]], S = (dyn2[[x]][2000,-1] != 0), A = dyn2[[x]][2000,-1])))
 betsur1 <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]][conn.com[[x]]], B2 = bet.f[[x]], A = condyn[[x]][2000,])))
 plot(betsur1$B, betsur1$B2)
@@ -233,7 +239,7 @@ for(i in 1:22){
   cval[i] <- ctest$estimate 
 }
 co <- 14
-
+cor.test(unlist(lapply(spr, function(x) tapply(x$cv10, list(x$spR), median, na.rm = T))), ex1)
 
 comm <- 3
 par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]])
@@ -247,6 +253,9 @@ for(i in 1:nrow(par$m)){
 errs <- is.na(dflist)
 dflist <- dflist[!is.na(dflist)]
 spr <- rbindlist(dflist)
+
+sum(!rbindlist(spr)$exts) - sum(sapply(spr, function(x) max(x$spR)))
+
 
 plot(spr$cv10,spr$exts)
 fit1 <- glm(exts~cv10, data = spr, family = "binomial")
