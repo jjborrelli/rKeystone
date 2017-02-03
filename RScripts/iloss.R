@@ -19,7 +19,7 @@ t.final <- 4000
 nc <- expand.grid(Ns, Cs)
 res <- list()
 inds <- list()
-for(i in 1:nrow(nc)){
+for(i in 44:nrow(nc)){
   eqc <- get_eqcomm(nc[i,1], nc[i,2], INTs, 1:t.final)
   
   cv10 <- apply(eqc$comm.dyn[1:10,], 2, function(x) sd(x)/mean(x))
