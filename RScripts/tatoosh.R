@@ -63,7 +63,7 @@ itypes.sp <- function(x){
 }
 
 
-tatoosh <- as.matrix(read.csv("C:/Users/jjborrelli/Desktop/GitHub/rKeystone/tatoosh.csv", header = F))
+tatoosh <- as.matrix(read.csv("~/Desktop/GitHub/rKeystone/tatoosh.csv", header = F))
 sum(tatoosh != 0)/(nrow(tatoosh)*(nrow(tatoosh) - 1))
 itypes(tatoosh)
 itypes.sp(tatoosh)
@@ -80,13 +80,16 @@ SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
 
-tats <- lapply(1:1000, function(x){
+tats <- lapply(1:200, function(x){
   p1 <- runif(1,0,1)
   tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
   return((tat))
 })
 
 ity <- sapply(tats, itypes)
+
+par(mfrow = c(5,1))
+apply(ity, 1, hist)
 
 dyn <- list()
 tats2 <- list()
@@ -141,9 +144,22 @@ bet.f <- lapply(ags.rv, betweenness)
 
 ityspl <- rbindlist(lapply(tats2, function(x) as.data.frame(itypes.sp(x))))
 ityspl2 <- as.data.frame(t(apply(ityspl, 1, function(x) x/sum(x))))
-plot(betsur$S~ityspl2$V4)
-points(glm(betsur$S~ityspl2$V4, family = "binomial")$fitted.values~ityspl2$V4, pch = 20)
 
+par(mfrow = c(1,2))
+plot(betsur$S~ityspl2$V5)
+fitA <- glm(betsur$S~ityspl2$V5, family = "binomial")
+cbA <- predict(fitA, se.fit = T)
+points(fitA$fitted.values~ityspl2$V5, pch = 20)
+points(inv.logit(cbA$fit+1.96*cbA$se.fit)~ityspl2$V5, pch = 20, col = "blue")
+points(inv.logit(cbA$fit-1.96*cbA$se.fit)~ityspl2$V5, pch = 20, col = "blue")
+
+
+plot(betsur$S~ityspl2$V4)
+fitB <- glm(betsur$S~ityspl2$V4, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V4, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V4, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V4, pch = 20, col = "blue")
 
 betsur <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]], S = (dyn[[x]][2000,] != 0), A = dyn[[x]][2000,])))
 betsur1 <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]][conn.com[[x]]], B2 = bet.f[[x]], A = condyn[[x]][2000,])))
@@ -244,15 +260,22 @@ ag1 <- aggregate(sprl$fBio-sprl$iBio, list(sprl$comm, sprl$spR), vegan::diversit
 aggregate(ag1$x, list(ag1$Group.1), median)
 
 t(sapply(conmat, itypes))[,5]
-
+i=1
 mdiv <- c()
+lRR <- list()
 for(i in 1:length(spr)){
   spl1 <- split(spr[[i]], f = spr[[i]]$spR)
   mdiv[i] <- median(sapply(spl1, function(x) (vegan::diversity(x$fBio) - vegan::diversity(x$iBio))/vegan::diversity(x$iBio))*100)
-
+  lRR[[i]] <- sapply(1:length(spl1), function(x){
+    log(abs(mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] < 0])/mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] > 0])))
+  })
 }
 mdiv
 
+lRR <- sapply(1:length(spl1), function(x){
+  log(abs(mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] < 0])/mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] > 0])))
+})
+spl1
 
 posint <- rbindlist(lapply(ity, function(x) as.data.frame(x[,c(1,2,3,4,5)])))
 ex1 <- unlist(n.exts)
