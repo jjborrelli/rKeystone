@@ -21,6 +21,15 @@ lvmod <- function(times, state, parms){
   })
 }
 
+# Basic Lotka-Volterra model
+lvmodK <- function(times, state, parms){
+  with(as.list(c(state, parms)), {
+    dB <- state * parms$alpha * (1 - state/(parms$K/sum(state > 0))) + state * parms$m %*% state 
+    
+    list(dB)
+  })
+}
+
 # Function to detect extinction (prevents negative abundances)
 ext1 <- function (times, states, parms){
   with(as.list(states), {
@@ -69,18 +78,18 @@ itypes(tatoosh)
 itypes.sp(tatoosh)
 
 
-p1 <- runif(1,.2,.8)
+p1 <- runif(1,0,1)
 tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
 itypes(tat)
 
 
-SteinInt <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+#SteinInt <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 
 SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
 
-tats <- lapply(1:200, function(x){
+tats <- lapply(1:10, function(x){
   p1 <- runif(1,0,1)
   tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
   return((tat))
@@ -90,21 +99,22 @@ ity <- sapply(tats, itypes)
 
 par(mfrow = c(5,1))
 apply(ity, 1, hist)
+dev.off()
 
 dyn <- list()
 tats2 <- list()
 grs <- list()
 for(i in 1:length(tats)){
   t1 <- tats[[i]]
-  diag(t1) <- -rbeta(length(diag(t1)), 1.1, 5)*5
+  diag(t1) <- 0#-rbeta(length(diag(t1)), 1.1, 5)*5
   t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), mean(INTs), sd(INTs)))
   t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), mean(INTs), sd(INTs)))
   
   gr <- runif(nrow(t1), .1, 1)
-  parms <- list(alpha = gr, m = t1)
+  parms <- list(alpha = gr, m = t1, K = 20)
   
   # numerical integration of ODE, simulates dynamics of local community
-  test <- ode(runif(nrow(t1), .1, 10), 1:2000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:2000))
+  test <- ode(runif(nrow(t1), .1, 10), 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
   
   if(nrow(test) == 2000){
     dyn[[i]] <- test[,-1]
@@ -115,19 +125,22 @@ for(i in 1:length(tats)){
     tats2[[i]] <- NA
     grs[[i]] <- NA
   }
-  matplot(test[,-1], type = "l", main = i)
   
+  matplot(test[,-1], type = "l", main = i)
+  print(length(dyn[!is.na(dyn)]))
 }
 
+sum(is.na(dyn))
+
 #initial interaction matrices for communities that worked
-tats2 <- tats2[!is.na(dyn)][sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
+tats2 <- tats2[!is.na(dyn)]#[sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0) & !sapply(dyn, function(x) sum(x < 0) > 0)]
 #growth rates of spp for communities that worked
-grs <- grs[!is.na(dyn)][sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
+grs <- grs[!is.na(dyn)]#[sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
 #dynamics of communities that worked
-dyn <- dyn[!is.na(dyn)][sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
+dyn <- dyn[!is.na(dyn)]#[sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
 
 #final networks of communities that worked
-ags <- lapply(1:length(dyn), function(x) graph.adjacency(abs(sign(tats2[[x]][dyn[[x]][2000,] != 0,dyn[[x]][2000,] != 0])), diag = F))
+ags <- lapply(1:length(dyn), function(x) graph.adjacency(abs(sign(tats2[[x]][dyn[[x]][2000,] > 0,dyn[[x]][2000,] > 0])), diag = F))
 #final networks of communities that worked, without isolated nodes
 ags.rv <- lapply(ags, function(x) delete_vertices(x, which(degree(x) == 0)))
 #get ids of connected nodes in ags.rv
@@ -136,6 +149,10 @@ conn.com <- lapply(ags.rv, function(x) colnames(tatoosh) %in% names(V(x)))
 condyn <- lapply(1:length(dyn), function(x) dyn[[x]][,conn.com[[x]]])
 #get interaction matrices of connected nodes
 conmat <- lapply(1:length(tats2), function(x) tats2[[x]][conn.com[[x]], conn.com[[x]]])
+
+p1 <- list(alpha = grs[[13]][conn.com[[13]]], m = conmat[[13]], K = 30)
+test1 <- ode(condyn[[13]][2000,], 1:100, parms = p1, func = lvmodK, events = list(func = ext1, time =  1:100))
+matplot(test1[,-1], typ = "l")
 
 
 ags.i <- lapply(tats2, function(x) graph.adjacency(abs(sign(x)), diag = F))
@@ -187,7 +204,7 @@ fitcv <- glm(S~cv10, data = cdat, family = "binomial")
 cb <- predict.glm(fitcv, se.fit = T)
 
 plot(betsur$S~unlist(rbindlist(cvi)$cv10))
-plot(inv.logit(cb$fit)~cdat$cv10, col = "blue", typ = "l")
+plot(inv.logit(cb$fit)~cdat$cv10, col = "blue")
 lines(inv.logit(cb$fit+1.96*cb$se.fit)~seq(0, 5, .01), col = "darkgreen")
 lines(inv.logit(cb$fit-1.96*cb$se.fit)~seq(0, 5, .01), col = "darkgreen")
 
@@ -202,7 +219,7 @@ points(inv.logit(cb$fit-1.96*cb$se.fit)~cdat$cv10, col = "darkgreen", pch = 18)
 
 remove.sp <- function(sp, parms, states){
   states[sp] <- 0
-  test <- ode(states, 1:2000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:2000))
+  test <- ode(states, 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
 
   if(nrow(test) == 2000){
     bi <- betweenness(graph.adjacency(abs(sign(parms$m))))
@@ -236,7 +253,7 @@ errs <- list()
 ity <- list()
 n.exts <- list()
 for(comm in 1:length(dyn)){
-  par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]])
+  par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]], K =20)
   st1 <- condyn[[comm]][2000,]
   
   dflist <- list()
