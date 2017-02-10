@@ -150,26 +150,29 @@ condyn <- lapply(1:length(dyn), function(x) dyn[[x]][,conn.com[[x]]])
 #get interaction matrices of connected nodes
 conmat <- lapply(1:length(tats2), function(x) tats2[[x]][conn.com[[x]], conn.com[[x]]])
 
-p1 <- list(alpha = grs[[13]][conn.com[[13]]], m = conmat[[13]], K = 30)
-test1 <- ode(condyn[[13]][2000,], 1:100, parms = p1, func = lvmodK, events = list(func = ext1, time =  1:100))
-matplot(test1[,-1], typ = "l")
 
+ity1 <- do.call(rbind, sapply(conmat, itypes.sp))
+gr1s <- unlist(sapply(1:length(dyn), function(x) grs[[x]][conn.com[[x]]]))
+resp1 <- unlist(sapply(1:length(dyn), function(x) condyn[[x]][2000,]))
+summary(lm(resp1~gr1s+ity1)) 
 
 ags.i <- lapply(tats2, function(x) graph.adjacency(abs(sign(x)), diag = F))
 bet.i <- lapply(1:length(ags.i), function(x) betweenness(ags.i[[x]]))
 bet.f <- lapply(ags.rv, betweenness)
 
+betsur <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]], S = (dyn[[x]][2000,] != 0), A = dyn[[x]][2000,])))
+betsur1 <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]][conn.com[[x]]], B2 = bet.f[[x]], A = condyn[[x]][2000,])))
+
 ityspl <- rbindlist(lapply(tats2, function(x) as.data.frame(itypes.sp(x))))
 ityspl2 <- as.data.frame(t(apply(ityspl, 1, function(x) x/sum(x))))
 
-par(mfrow = c(1,2))
+par(mfrow = c(2,3))
 plot(betsur$S~ityspl2$V5)
 fitA <- glm(betsur$S~ityspl2$V5, family = "binomial")
 cbA <- predict(fitA, se.fit = T)
 points(fitA$fitted.values~ityspl2$V5, pch = 20)
 points(inv.logit(cbA$fit+1.96*cbA$se.fit)~ityspl2$V5, pch = 20, col = "blue")
 points(inv.logit(cbA$fit-1.96*cbA$se.fit)~ityspl2$V5, pch = 20, col = "blue")
-
 
 plot(betsur$S~ityspl2$V4)
 fitB <- glm(betsur$S~ityspl2$V4, family = "binomial")
@@ -178,8 +181,27 @@ points(fitB$fitted.values~ityspl2$V4, pch = 20)
 points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V4, pch = 20, col = "blue")
 points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V4, pch = 20, col = "blue")
 
-betsur <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]], S = (dyn[[x]][2000,] != 0), A = dyn[[x]][2000,])))
-betsur1 <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]][conn.com[[x]]], B2 = bet.f[[x]], A = condyn[[x]][2000,])))
+plot(betsur$S~ityspl2$V3)
+fitB <- glm(betsur$S~ityspl2$V3, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V3, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V3, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V3, pch = 20, col = "blue")
+
+plot(betsur$S~ityspl2$V2)
+fitB <- glm(betsur$S~ityspl2$V2, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V2, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V2, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V2, pch = 20, col = "blue")
+
+plot(betsur$S~ityspl2$V1)
+fitB <- glm(betsur$S~ityspl2$V1, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V1, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V1, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V1, pch = 20, col = "blue")
+
 plot(betsur1$B, betsur1$B2)
 abline(a = 0, b = 1, xpd = F)
 plot(betsur1$B2, betsur1$A)
