@@ -21,6 +21,15 @@ lvmod <- function(times, state, parms){
   })
 }
 
+# Basic Lotka-Volterra model
+lvmodK <- function(times, state, parms){
+  with(as.list(c(state, parms)), {
+    dB <- state * parms$alpha * (1 - state/(parms$K/sum(state > 0))) + state * parms$m %*% state 
+    
+    list(dB)
+  })
+}
+
 # Function to detect extinction (prevents negative abundances)
 ext1 <- function (times, states, parms){
   with(as.list(states), {
@@ -63,24 +72,24 @@ itypes.sp <- function(x){
 }
 
 
-tatoosh <- as.matrix(read.csv("C:/Users/jjborrelli/Desktop/GitHub/rKeystone/tatoosh.csv", header = F))
+tatoosh <- as.matrix(read.csv("~/Desktop/GitHub/rKeystone/tatoosh.csv", header = F))
 sum(tatoosh != 0)/(nrow(tatoosh)*(nrow(tatoosh) - 1))
 itypes(tatoosh)
 itypes.sp(tatoosh)
 
 
-p1 <- runif(1,.2,.8)
+p1 <- runif(1,0,1)
 tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
 itypes(tat)
 
 
-SteinInt <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+#SteinInt <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 
 SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
 
-tats <- lapply(1:1000, function(x){
+tats <- lapply(1:10, function(x){
   p1 <- runif(1,0,1)
   tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
   return((tat))
@@ -88,20 +97,24 @@ tats <- lapply(1:1000, function(x){
 
 ity <- sapply(tats, itypes)
 
+par(mfrow = c(5,1))
+apply(ity, 1, hist)
+dev.off()
+
 dyn <- list()
 tats2 <- list()
 grs <- list()
 for(i in 1:length(tats)){
   t1 <- tats[[i]]
-  diag(t1) <- -rbeta(length(diag(t1)), 1.1, 5)*5
+  diag(t1) <- 0#-rbeta(length(diag(t1)), 1.1, 5)*5
   t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), mean(INTs), sd(INTs)))
   t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), mean(INTs), sd(INTs)))
   
   gr <- runif(nrow(t1), .1, 1)
-  parms <- list(alpha = gr, m = t1)
+  parms <- list(alpha = gr, m = t1, K = 20)
   
   # numerical integration of ODE, simulates dynamics of local community
-  test <- ode(runif(nrow(t1), .1, 10), 1:2000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:2000))
+  test <- ode(runif(nrow(t1), .1, 10), 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
   
   if(nrow(test) == 2000){
     dyn[[i]] <- test[,-1]
@@ -112,19 +125,22 @@ for(i in 1:length(tats)){
     tats2[[i]] <- NA
     grs[[i]] <- NA
   }
-  matplot(test[,-1], type = "l", main = i)
   
+  matplot(test[,-1], type = "l", main = i)
+  print(length(dyn[!is.na(dyn)]))
 }
 
+sum(is.na(dyn))
+
 #initial interaction matrices for communities that worked
-tats2 <- tats2[!is.na(dyn)][sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
+tats2 <- tats2[!is.na(dyn)]#[sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0) & !sapply(dyn, function(x) sum(x < 0) > 0)]
 #growth rates of spp for communities that worked
-grs <- grs[!is.na(dyn)][sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
+grs <- grs[!is.na(dyn)]#[sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
 #dynamics of communities that worked
-dyn <- dyn[!is.na(dyn)][sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
+dyn <- dyn[!is.na(dyn)]#[sapply(dyn[!is.na(dyn)], function(x) sum(is.na(x)) == 0)]
 
 #final networks of communities that worked
-ags <- lapply(1:length(dyn), function(x) graph.adjacency(abs(sign(tats2[[x]][dyn[[x]][2000,] != 0,dyn[[x]][2000,] != 0])), diag = F))
+ags <- lapply(1:length(dyn), function(x) graph.adjacency(abs(sign(tats2[[x]][dyn[[x]][2000,] > 0,dyn[[x]][2000,] > 0])), diag = F))
 #final networks of communities that worked, without isolated nodes
 ags.rv <- lapply(ags, function(x) delete_vertices(x, which(degree(x) == 0)))
 #get ids of connected nodes in ags.rv
@@ -135,18 +151,57 @@ condyn <- lapply(1:length(dyn), function(x) dyn[[x]][,conn.com[[x]]])
 conmat <- lapply(1:length(tats2), function(x) tats2[[x]][conn.com[[x]], conn.com[[x]]])
 
 
+ity1 <- do.call(rbind, sapply(conmat, itypes.sp))
+gr1s <- unlist(sapply(1:length(dyn), function(x) grs[[x]][conn.com[[x]]]))
+resp1 <- unlist(sapply(1:length(dyn), function(x) condyn[[x]][2000,]))
+summary(lm(resp1~gr1s+ity1)) 
+
 ags.i <- lapply(tats2, function(x) graph.adjacency(abs(sign(x)), diag = F))
 bet.i <- lapply(1:length(ags.i), function(x) betweenness(ags.i[[x]]))
 bet.f <- lapply(ags.rv, betweenness)
 
-ityspl <- rbindlist(lapply(tats2, function(x) as.data.frame(itypes.sp(x))))
-ityspl2 <- as.data.frame(t(apply(ityspl, 1, function(x) x/sum(x))))
-plot(betsur$S~ityspl2$V4)
-points(glm(betsur$S~ityspl2$V4, family = "binomial")$fitted.values~ityspl2$V4, pch = 20)
-
-
 betsur <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]], S = (dyn[[x]][2000,] != 0), A = dyn[[x]][2000,])))
 betsur1 <- rbindlist(lapply(1:length(ags.i), function(x) data.frame(B = bet.i[[x]][conn.com[[x]]], B2 = bet.f[[x]], A = condyn[[x]][2000,])))
+
+ityspl <- rbindlist(lapply(tats2, function(x) as.data.frame(itypes.sp(x))))
+ityspl2 <- as.data.frame(t(apply(ityspl, 1, function(x) x/sum(x))))
+
+par(mfrow = c(2,3))
+plot(betsur$S~ityspl2$V5)
+fitA <- glm(betsur$S~ityspl2$V5, family = "binomial")
+cbA <- predict(fitA, se.fit = T)
+points(fitA$fitted.values~ityspl2$V5, pch = 20)
+points(inv.logit(cbA$fit+1.96*cbA$se.fit)~ityspl2$V5, pch = 20, col = "blue")
+points(inv.logit(cbA$fit-1.96*cbA$se.fit)~ityspl2$V5, pch = 20, col = "blue")
+
+plot(betsur$S~ityspl2$V4)
+fitB <- glm(betsur$S~ityspl2$V4, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V4, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V4, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V4, pch = 20, col = "blue")
+
+plot(betsur$S~ityspl2$V3)
+fitB <- glm(betsur$S~ityspl2$V3, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V3, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V3, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V3, pch = 20, col = "blue")
+
+plot(betsur$S~ityspl2$V2)
+fitB <- glm(betsur$S~ityspl2$V2, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V2, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V2, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V2, pch = 20, col = "blue")
+
+plot(betsur$S~ityspl2$V1)
+fitB <- glm(betsur$S~ityspl2$V1, family = "binomial")
+cbB <- predict(fitB, se.fit = T)
+points(fitB$fitted.values~ityspl2$V1, pch = 20)
+points(inv.logit(cbB$fit+1.96*cbB$se.fit)~ityspl2$V1, pch = 20, col = "blue")
+points(inv.logit(cbB$fit-1.96*cbB$se.fit)~ityspl2$V1, pch = 20, col = "blue")
+
 plot(betsur1$B, betsur1$B2)
 abline(a = 0, b = 1, xpd = F)
 plot(betsur1$B2, betsur1$A)
@@ -171,7 +226,7 @@ fitcv <- glm(S~cv10, data = cdat, family = "binomial")
 cb <- predict.glm(fitcv, se.fit = T)
 
 plot(betsur$S~unlist(rbindlist(cvi)$cv10))
-plot(inv.logit(cb$fit)~cdat$cv10, col = "blue", typ = "l")
+plot(inv.logit(cb$fit)~cdat$cv10, col = "blue")
 lines(inv.logit(cb$fit+1.96*cb$se.fit)~seq(0, 5, .01), col = "darkgreen")
 lines(inv.logit(cb$fit-1.96*cb$se.fit)~seq(0, 5, .01), col = "darkgreen")
 
@@ -186,7 +241,7 @@ points(inv.logit(cb$fit-1.96*cb$se.fit)~cdat$cv10, col = "darkgreen", pch = 18)
 
 remove.sp <- function(sp, parms, states){
   states[sp] <- 0
-  test <- ode(states, 1:2000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:2000))
+  test <- ode(states, 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
 
   if(nrow(test) == 2000){
     bi <- betweenness(graph.adjacency(abs(sign(parms$m))))
@@ -220,7 +275,7 @@ errs <- list()
 ity <- list()
 n.exts <- list()
 for(comm in 1:length(dyn)){
-  par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]])
+  par <- list(alpha = grs[[comm]][conn.com[[comm]]], m = conmat[[comm]], K =20)
   st1 <- condyn[[comm]][2000,]
   
   dflist <- list()
@@ -244,15 +299,22 @@ ag1 <- aggregate(sprl$fBio-sprl$iBio, list(sprl$comm, sprl$spR), vegan::diversit
 aggregate(ag1$x, list(ag1$Group.1), median)
 
 t(sapply(conmat, itypes))[,5]
-
+i=1
 mdiv <- c()
+lRR <- list()
 for(i in 1:length(spr)){
   spl1 <- split(spr[[i]], f = spr[[i]]$spR)
   mdiv[i] <- median(sapply(spl1, function(x) (vegan::diversity(x$fBio) - vegan::diversity(x$iBio))/vegan::diversity(x$iBio))*100)
-
+  lRR[[i]] <- sapply(1:length(spl1), function(x){
+    log(abs(mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] < 0])/mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] > 0])))
+  })
 }
 mdiv
 
+lRR <- sapply(1:length(spl1), function(x){
+  log(abs(mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] < 0])/mean((spl1[[x]]$fBio - spl1[[x]]$iBio)[-x][(spl1[[x]]$fBio - spl1[[x]]$iBio)[-x] > 0])))
+})
+spl1
 
 posint <- rbindlist(lapply(ity, function(x) as.data.frame(x[,c(1,2,3,4,5)])))
 ex1 <- unlist(n.exts)

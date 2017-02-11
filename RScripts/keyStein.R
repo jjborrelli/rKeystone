@@ -23,8 +23,8 @@ ints1 <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.nam
 grow1 <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-Growth.csv")
 
 
-ints1 <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
-grow1 <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-Growth.csv")
+#ints1 <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
+#grow1 <- read.csv("C:/Users/jjborrelli/Desktop/GitHub/microbial-dyn/Data/ecomod-Growth.csv")
 
 
 parms <- list(alpha = unlist(grow1), m = as.matrix(ints1))
@@ -41,6 +41,32 @@ plot(g1, edge.width = w1*5, edge.color = as.character(s2), edge.arrow.size = 1.5
 ## Stochasticity ###################
 ## parms$r <- rnorm(1000, 1, .1) ###
 ## #################################
+library(rootSolve)
+combos <- lapply(2:11, function(x) combn(11, x))
+Bs <- matrix(runif(11000), nrow = 1000, ncol = 11)
+
+co1 <- combos[[8]]
+tqss <- function(Bs, co1, grow1, ints1){
+  qss <- c()
+  for(i in 1:ncol(co1)){
+    eig <- c()
+    for(x in 1:nrow(Bs)){
+      jf <- jacobian.full(Bs[x,co1[,i]], func = lvmod, parms = list(alpha = unlist(grow1)[co1[,i]], m = as.matrix(ints1)[co1[,i], co1[,i]]))
+      eig[x] <- max(Re(eigen(jf)$values))
+    }
+    qss[i] <- sum(eig < 0)/length(eig)
+    
+  }
+  return(qss)
+}
+
+qsstest <- lapply(combos, function(x) tqss(Bs, x, grow1, ints1))
+
+## #################################
+## #################################
+## #################################
+
+
 
 
 
