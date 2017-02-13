@@ -91,12 +91,12 @@ SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
 S = 100
-tats <- lapply(1:10, function(x){
-  p1 <- runif(1,0,1)
+tats <- lapply(1:100, function(x){
+  p1 <- runif(1,0,.1)
   p2 <- runif(1, p1, 1)
   mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
   #tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
-  tat <- mats*sample(c(1,-1,0), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
+  tat <- mats*sample(c(0,1,-1), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
   return((tat))
 })
 
@@ -119,7 +119,7 @@ for(i in 1:length(tats)){
   parms <- list(alpha = gr, m = t1, K = 20)
   
   # numerical integration of ODE, simulates dynamics of local community
-  test <- ode(runif(nrow(t1), .1, 10), 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
+  test <- ode(runif(nrow(t1), .1, 1), 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
   
   if(nrow(test) == 2000){
     dyn[[i]] <- test[,-1]
@@ -285,10 +285,10 @@ errs <- list()
 ity <- list()
 n.exts <- list()
 for(comm in 1:length(dyn)){
-  par <- list(alpha = grs[[comm]][conn.com[[comm]]][condyn[[comm]][2000,] != 0],
-              m = conmat[[comm]][condyn[[comm]][2000,] != 0,condyn[[comm]][2000,] != 0],
+  par <- list(alpha = grs[[comm]][dyn[[comm]][2000,] != 0],
+              m = tats2[[comm]][dyn[[comm]][2000,] != 0,dyn[[comm]][2000,] != 0],
               K =20)
-  st1 <- condyn[[comm]][2000,condyn[[comm]][2000,] != 0]
+  st1 <- dyn[[comm]][2000,dyn[[comm]][2000,] != 0]
   
   dflist <- list()
   for(i in 1:nrow(par$m)){
@@ -315,6 +315,7 @@ hist(dbio$x)
 
 
 #ity <- t(apply(sapply(conmat, itypes), 2, function(x) x/sum(x)))
+
 summary(betareg(medper~sapply(conmat, function(x) sum(abs(sign(x)))/nrow(x)^2)+ity[,c(1,2,5)]))
 summary(betareg(medper~sapply(conmat, function(x) sum(x >0))*sapply(conmat, function(x) sum(x < 0))))
 
@@ -412,6 +413,7 @@ for(n in 1:length(dyn)){
   par3 <- grs[[n]][dyn[[n]][2000,]!=0]
   q1 <- qss(par1, par2, par3)
   q2[n] <- sum(q1 < 0)/1000
+  print(n)
 }
 q2
 inty <- t(apply(sapply(conmat, itypes), 2, function(x) x/sum(x)))
