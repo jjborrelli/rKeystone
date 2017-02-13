@@ -91,12 +91,12 @@ SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
 S = 100
-tats <- lapply(1:100, function(x){
+tats <- lapply(1:10, function(x){
   p1 <- runif(1,0,1)
   p2 <- runif(1, p1, 1)
   mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
   #tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
-  tat <- mats*sample(c(1,-1,0), S, replace = T, prob = c(p1,p2-p1,1-(p2)))
+  tat <- mats*sample(c(1,-1,0), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
   return((tat))
 })
 
@@ -285,7 +285,7 @@ errs <- list()
 ity <- list()
 n.exts <- list()
 for(comm in 1:length(dyn)){
-  par <- list(alpha = grs[[comm]][conn.com[[comm]]][condyn[[2]][2000,] != 0],
+  par <- list(alpha = grs[[comm]][conn.com[[comm]]][condyn[[comm]][2000,] != 0],
               m = conmat[[comm]][condyn[[comm]][2000,] != 0,condyn[[comm]][2000,] != 0],
               K =20)
   st1 <- condyn[[comm]][2000,condyn[[comm]][2000,] != 0]
@@ -308,7 +308,11 @@ for(comm in 1:length(dyn)){
 sprl <- rbindlist(spr)
 
 persist <- aggregate(sprl$exts, list(sprl$comm, sprl$spR), function(x) sum(x)/length(x))
-head(persist)
+dbio <- aggregate(sprl$fBio-sprl$iBio, list(sprl$comm), function(x) median(x))
+hist(log(dbio$x[,1]/abs(dbio$x[,2])))
+hist(persist$x)
+hist(dbio$x)
+
 
 #ity <- t(apply(sapply(conmat, itypes), 2, function(x) x/sum(x)))
 summary(betareg(medper~sapply(conmat, function(x) sum(abs(sign(x)))/nrow(x)^2)+ity[,c(1,2,5)]))
@@ -380,11 +384,12 @@ abline(a = 0, b = 1, xpd = F)
 ################################################################################################################
 ################################################################################################################
 
-n = 2
-cm1 <- conmat[[n]]
-g1 <- grs[[n]][conn.com[[n]]]
+n = 3
+cm1 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
+g1 <- grs[[n]][dyn[[n]][2000,]!=0]
+stA <- dyn[[n]][2000,][dyn[[n]][2000,]!=0]
 
-eig.i <- max(Re(eigen(jacobian.full(condyn[[n]][2000,], func = lvmodK, parms = list(alpha = g1, m = cm1, K = 20)))$values))
+eig.i <- max(Re(eigen(jacobian.full(stA, func = lvmodK, parms = list(alpha = g1, m = cm1, K = 20)))$values))
 eig.i
 
 qss <- function(cd1, cm1, g1){
@@ -401,12 +406,12 @@ qss <- function(cd1, cm1, g1){
 }
 
 q2 <- c()
-for(x in 1:length(dyn)){
-  par1 <- condyn[[x]][2000,]
-  par2 <- conmat[[x]]
-  par3 <- grs[[x]][conn.com[[x]]]
+for(n in 1:length(dyn)){
+  par1 <- dyn[[n]][2000,][dyn[[n]][2000,]!=0]
+  par2 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
+  par3 <- grs[[n]][dyn[[n]][2000,]!=0]
   q1 <- qss(par1, par2, par3)
-  q2[x] <- sum(q1 < 0)/1000
+  q2[n] <- sum(q1 < 0)/1000
 }
 q2
 inty <- t(apply(sapply(conmat, itypes), 2, function(x) x/sum(x)))
