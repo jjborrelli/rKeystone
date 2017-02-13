@@ -316,6 +316,7 @@ hist(dbio$x)
 df1 <- (data.frame(per = dbio$x, t(apply(do.call(rbind, ity), 1, function(x) x/sum(x)))))
 summary(lm(per~X1+X2+X5, data = df1, family = "quasibinomial"))
 matint <- apply(sapply(1:length(dyn), function(comm) itypes(tats2[[comm]][dyn[[comm]][2000,] != 0,dyn[[comm]][2000,] != 0])), 1, function(x) (x-mean(x))/sd(x))
+summary(glm(aggregate(persist$x, list(persist$Group.1), median)$x~q2, family = "quasibinomial"))
 
 summary(betareg(q2~matint[,3:5]))
 
@@ -384,12 +385,24 @@ abline(a = 0, b = 1, xpd = F)
 
 ################################################################################################################
 ################################################################################################################
+eqab <- list()
+for(n in 1:length(dyn)){
+  cm1 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
+  g1 <- grs[[n]][dyn[[n]][2000,]!=0]
+  stA <- dyn[[n]][2000,][dyn[[n]][2000,]!=0]
+  eq <- 20/length(stA)
+  deg <- apply(cm1, 2, function(x) sum(x < 0)) + apply(cm1, 1, function(x) sum(x < 0)) 
+  
+  eqab[[n]] <- cbind(diff = stA - eq, deg)
+}
+
 eig.i <- c()
 matints <- matrix(nrow = length(dyn), ncol = 5)
 matints2 <- list()
 eigs.r <- list()
 nspp <- c()
 conn1 <- c()
+nlin <- c()
 for(n in 1:length(dyn)){
   cm1 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
   g1 <- grs[[n]][dyn[[n]][2000,]!=0]
@@ -398,7 +411,7 @@ for(n in 1:length(dyn)){
   matints[n,] <- itypes(cm1)
   nspp[n] <- nrow(cm1)
   conn1[n] <- sum(cm1 != 0)/nrow(cm1)^2
-  
+  nlin[n] <- sum(cm1 != 0) 
   eig.i[n] <- max(Re(eigen(jacobian.full(stA, func = lvmodK, parms = list(alpha = g1, m = cm1, K = 20)))$values))
   
   
@@ -420,6 +433,7 @@ for(n in 1:length(dyn)){
 }
 
 summary(lm(eig.i~t(apply(matints, 1, function(x) x/sum(x)))[,c(1,2)]))
+summary(lm(q2~nlin+t(apply(matints, 1, function(x) x/sum(x)))[,c(1,2)]))
 summary(lm(unlist(eigs.r)~t(apply(do.call(rbind, matints2), 1, function(x) x/sum(x)))[,1:2]))
 
 qss <- function(cd1, cm1, g1){
@@ -442,24 +456,24 @@ for(n in 1:length(dyn)){
   par2 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
   par3 <- grs[[n]][dyn[[n]][2000,]!=0]
   
-  q1a <- c()
-  for(x in 1:length(par1)){
-    par1a <- par1
-    par2a <- par2
-    par3a <- par3
-    
-    par1a <- par1a[-x]
-    par2a <- par2a[-x,-x]
-    par3a <- par3a[-x]
-    
-    q1a[x] <- sum(qss(par1a, par2a, par3a) < 0)/1000
-    cat(x, "(", q1a[x], ")", " ; ")
-  }
+  #q1a <- c()
+  #for(x in 1:length(par1)){
+  #  par1a <- par1
+  #  par2a <- par2
+  #  par3a <- par3
+  # 
+  #  par1a <- par1a[-x]
+  #  par2a <- par2a[-x,-x]
+  #  par3a <- par3a[-x]
+  #  
+  #  q1a[x] <- sum(qss(par1a, par2a, par3a) < 0)/1000
+  #  cat(x, "(", q1a[x], ")", " ; ")
+  #}
   
-  qkey[[n]] <- q1a
+  #qkey[[n]] <- q1a
   
   q1 <- qss(par1, par2, par3)
-  q2[n] <- sum(q1 < 0)/100
+  q2[n] <- sum(q1 < 0)/1000
   print(n)
 }
 q2
