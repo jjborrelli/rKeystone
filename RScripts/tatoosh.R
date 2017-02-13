@@ -308,16 +308,16 @@ for(comm in 1:length(dyn)){
 sprl <- rbindlist(spr)
 
 persist <- aggregate(sprl$exts, list(sprl$comm, sprl$spR), function(x) sum(x)/length(x))
-dbio <- aggregate(sprl$fBio-sprl$iBio, list(sprl$comm), function(x) median(x))
+dbio <- aggregate(sprl$fBio-sprl$iBio, list(sprl$comm, sprl$spR), function(x) min(x))
 hist(log(dbio$x[,1]/abs(dbio$x[,2])))
 hist(persist$x)
 hist(dbio$x)
 
+df1 <- (data.frame(per = dbio$x, t(apply(do.call(rbind, ity), 1, function(x) x/sum(x)))))
+summary(lm(per~X1+X2+X5, data = df1, family = "quasibinomial"))
+matint <- apply(sapply(1:length(dyn), function(comm) itypes(tats2[[comm]][dyn[[comm]][2000,] != 0,dyn[[comm]][2000,] != 0])), 1, function(x) (x-mean(x))/sd(x))
 
-#ity <- t(apply(sapply(conmat, itypes), 2, function(x) x/sum(x)))
-
-summary(betareg(medper~sapply(conmat, function(x) sum(abs(sign(x)))/nrow(x)^2)+ity[,c(1,2,5)]))
-summary(betareg(medper~sapply(conmat, function(x) sum(x >0))*sapply(conmat, function(x) sum(x < 0))))
+summary(betareg(q2~matint[,3:5]))
 
 ag1 <- aggregate(sprl$fBio-sprl$iBio, list(sprl$comm, sprl$spR), vegan::diversity)
 aggregate(ag1$x, list(ag1$Group.1), median)
@@ -384,14 +384,43 @@ abline(a = 0, b = 1, xpd = F)
 
 ################################################################################################################
 ################################################################################################################
+eig.i <- c()
+matints <- matrix(nrow = length(dyn), ncol = 5)
+matints2 <- list()
+eigs.r <- list()
+nspp <- c()
+conn1 <- c()
+for(n in 1:length(dyn)){
+  cm1 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
+  g1 <- grs[[n]][dyn[[n]][2000,]!=0]
+  stA <- dyn[[n]][2000,][dyn[[n]][2000,]!=0]
+  
+  matints[n,] <- itypes(cm1)
+  nspp[n] <- nrow(cm1)
+  conn1[n] <- sum(cm1 != 0)/nrow(cm1)^2
+  
+  eig.i[n] <- max(Re(eigen(jacobian.full(stA, func = lvmodK, parms = list(alpha = g1, m = cm1, K = 20)))$values))
+  
+  
+  mati2 <- matrix(nrow = nrow(cm1), ncol = 5)
+  eig.r <- c()
+  for(i in 1:nrow(cm1)){
+    cm1 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0][-i,-i]
+    g1 <- grs[[n]][dyn[[n]][2000,]!=0][-i]
+    stA <- spr[[n]]$fBio[spr[[n]]$spR == i][-i]
+    if(length(stA) == 0){mati2[i,] <- NA;eig.r[i] <- NA;next}
+    mati2[i,] <- itypes(cm1)
+    
+    eig.r[i] <- max(Re(eigen(jacobian.full(stA, func = lvmodK, parms = list(alpha = g1, m = cm1, K = 20)))$values))
+  }
+  
+  eigs.r[[n]] <- eig.r 
+  matints2[[n]] <- mati2
+  
+}
 
-n = 3
-cm1 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
-g1 <- grs[[n]][dyn[[n]][2000,]!=0]
-stA <- dyn[[n]][2000,][dyn[[n]][2000,]!=0]
-
-eig.i <- max(Re(eigen(jacobian.full(stA, func = lvmodK, parms = list(alpha = g1, m = cm1, K = 20)))$values))
-eig.i
+summary(lm(eig.i~t(apply(matints, 1, function(x) x/sum(x)))[,c(1,2)]))
+summary(lm(unlist(eigs.r)~t(apply(do.call(rbind, matints2), 1, function(x) x/sum(x)))[,1:2]))
 
 qss <- function(cd1, cm1, g1){
   eig.c <- c()
@@ -407,17 +436,39 @@ qss <- function(cd1, cm1, g1){
 }
 
 q2 <- c()
+qkey <- list()
 for(n in 1:length(dyn)){
   par1 <- dyn[[n]][2000,][dyn[[n]][2000,]!=0]
   par2 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
   par3 <- grs[[n]][dyn[[n]][2000,]!=0]
+  
+  q1a <- c()
+  for(x in 1:length(par1)){
+    par1a <- par1
+    par2a <- par2
+    par3a <- par3
+    
+    par1a <- par1a[-x]
+    par2a <- par2a[-x,-x]
+    par3a <- par3a[-x]
+    
+    q1a[x] <- sum(qss(par1a, par2a, par3a) < 0)/1000
+    cat(x, "(", q1a[x], ")", " ; ")
+  }
+  
+  qkey[[n]] <- q1a
+  
   q1 <- qss(par1, par2, par3)
-  q2[n] <- sum(q1 < 0)/1000
+  q2[n] <- sum(q1 < 0)/100
   print(n)
 }
 q2
 inty <- t(apply(sapply(conmat, itypes), 2, function(x) x/sum(x)))
 summary(lm(q2~inty[,4:5]))
+
+
+
+
 ################################################################################################################
 ################################################################################################################
 ################################################################################################################
