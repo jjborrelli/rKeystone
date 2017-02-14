@@ -433,7 +433,7 @@ for(n in 1:length(dyn)){
 }
 
 summary(lm(eig.i~t(apply(matints, 1, function(x) x/sum(x)))[,c(1,2)]))
-summary(lm(q2~nlin+t(apply(matints, 1, function(x) x/sum(x)))[,c(1,2)]))
+summary(betareg(q2~matints[,1:5]))
 summary(lm(unlist(eigs.r)~t(apply(do.call(rbind, matints2), 1, function(x) x/sum(x)))[,1:2]))
 
 qss <- function(cd1, cm1, g1){
@@ -456,21 +456,21 @@ for(n in 1:length(dyn)){
   par2 <- tats2[[n]][dyn[[n]][2000,]!=0,dyn[[n]][2000,]!=0]
   par3 <- grs[[n]][dyn[[n]][2000,]!=0]
   
-  #q1a <- c()
-  #for(x in 1:length(par1)){
-  #  par1a <- par1
-  #  par2a <- par2
-  #  par3a <- par3
-  # 
-  #  par1a <- par1a[-x]
-  #  par2a <- par2a[-x,-x]
-  #  par3a <- par3a[-x]
-  #  
-  #  q1a[x] <- sum(qss(par1a, par2a, par3a) < 0)/1000
-  #  cat(x, "(", q1a[x], ")", " ; ")
-  #}
+  q1a <- c()
+  for(x in 1:length(par1)){
+    par1a <- par1
+    par2a <- par2
+    par3a <- par3
+   
+    par1a <- par1a[-x]
+    par2a <- par2a[-x,-x]
+    par3a <- par3a[-x]
+    
+    q1a[x] <- sum(qss(par1a, par2a, par3a) < 0)/1000
+    cat(x, "(", q1a[x], ")", " ; ")
+  }
   
-  #qkey[[n]] <- q1a
+  qkey[[n]] <- q1a
   
   q1 <- qss(par1, par2, par3)
   q2[n] <- sum(q1 < 0)/1000
