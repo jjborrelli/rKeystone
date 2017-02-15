@@ -178,7 +178,36 @@ remove.sp <- function(sp, parms, states){
   return(sppdf)
 }
 
-
+impacts <- function(ra, ge){
+  persist <- aggregate(ra$exts, list(spr = ra$spR, comm = ra$comm), function(x) sum(x)/(length(x)-1))
+  dbio <- aggregate(ra$fBio - ra$iBio, list(spr = ra$spR, comm = ra$comm), function(x) c(median(x[x < 0], na.rm = T),median(x[x > 0], na.rm = T)))
+  
+  eigs <- lapply(1:length(ge$eqm), function(x){
+    gr <- ge$eqgr[[x]]
+    m <- ge$eqm[[x]]
+    st1 <- ge$eqst[[x]]
+    mre <- c()
+    mim <- c()
+    for(i in 1:nrow(m)){
+      jf <- jacobian.full(st1[-i], func = lvmodK, parms = list(alpha = gr[-i], m = m[-i,-i], K = 20))
+      mre[i] <- max(Re(eigen(jf)$values))
+      mim[i] <- Im(eigen(jf)$values)[which.max(Re(eigen(jf)$values))]
+    }
+    return(data.frame(comm = x, sp = 1:length(mre), mre, mim))
+  })
+  
+  c10 <- aggregate(ra$cv10, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
+  c100 <- aggregate(ra$cv100, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
+  c1k <- aggregate(ra$cv1k, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
+  
+  d1 <- aggregate(ra$iBio, list(spr = ra$spR, comm = ra$comm), function(x) vegan::diversity(x))$x
+  d2 <- aggregate(ra$fBio, list(spr = ra$spR, comm = ra$comm), function(x) vegan::diversity(x))$x
+  
+  eigs <- do.call(rbind, eigs)
+  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, div = d2-d1, eigre = eigs$mre, eigim = eigs$mim)
+  
+  return(dfall)
+}
 
 #################################################################################################
 #################################################################################################
@@ -206,30 +235,8 @@ sapply(ge.mult1$eqst, length)
 sapply(ge.mult2$eqst, length)
 
 ra.mult <- remove_all(ge.mult)
-persist <- aggregate(ra.mult$exts, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) sum(x)/(length(x)-1))
-dbio <- aggregate(ra.mult$fBio - ra.mult$iBio, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) c(median(x[x < 0], na.rm = T),median(x[x > 0], na.rm = T)))
 
-eigs <- lapply(1:length(ge.mult$eqm), function(x){
-  gr <- ge.mult$eqgr[[x]]
-  m <- ge.mult$eqm[[x]]
-  st1 <- ge.mult$eqst[[x]]
-  mre <- c()
-  mim <- c()
-  for(i in 1:nrow(m)){
-    jf <- jacobian.full(st1[-i], func = lvmodK, parms = list(alpha = gr[-i], m = m[-i,-i], K = 20))
-    mre[i] <- max(Re(eigen(jf)$values))
-    mim[i] <- Im(eigen(jf)$values)[which.max(Re(eigen(jf)$values))]
-  }
-  return(data.frame(comm = x, sp = 1:length(mre), mre, mim))
-})
-
-aggregate(ra.mult$cv10, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) median(x, na.rm = T))
-aggregate(ra.mult$cv100, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) median(x, na.rm = T))
-aggregate(ra.mult$cv1k, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) median(x, na.rm = T))
-
-aggregate(ra.mult$iBio, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) vegan::diversity(x))
-aggregate(ra.mult$fBio, list(comm = ra.mult$comm, spr = ra.mult$spR), function(x) vegan::diversity(x))
-
+test <- impacts(ra.mult, ge.mult)
 
 #################################################################################################
 #################################################################################################
