@@ -37,8 +37,10 @@ get_eq <- function(mats, times, INTs, Rmax = 1, Kval = 20){
   for(i in 1:length(mats)){
     t1 <- mats[[i]]
     diag(t1) <- 0  #-rbeta(length(diag(t1)), 1.1, 5)*5
-    t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), mean(INTs), sd(INTs))) #runif(sum(t1 == 1), 0, 1) 
-    t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), mean(INTs), sd(INTs))) # runif(sum(t1 == -1), -1, 0) 
+    t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), 0, .5))
+      #abs(rnorm(sum(t1 == 1), mean(INTs), sd(INTs))) #runif(sum(t1 == 1), 0, 1) 
+    t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), 0, .5))
+      #-abs(rnorm(sum(t1 == -1), mean(INTs), sd(INTs))) # runif(sum(t1 == -1), -1, 0) 
     
     gr <- runif(nrow(t1), .1, Rmax)
     parms <- list(alpha = gr, m = t1, K = Kval)
@@ -151,6 +153,7 @@ remove.sp <- function(sp, parms, states){
   rbio <- states[sp]
   states[sp] <- 0
   test <- ode(states, 1:2000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:2000))
+  print(matplot(test[,-1], typ = "l"))
   
   if(nrow(test) == 2000){
     bi <- betweenness(graph.adjacency(abs(sign(parms$m))))
@@ -216,7 +219,7 @@ impacts <- function(ra, ge){
 SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
-S = 100
+S = 1000
 multityp <- lapply(1:5, function(x){
   p1 <- runif(1,0,1)
   p2 <- runif(1, p1, 1)
@@ -228,7 +231,7 @@ multityp <- lapply(1:5, function(x){
 
 ge.mult <- get_eq(multityp, times = 4000, INTs = INTs, Rmax = 1)
 ge.mult1 <- get_eq(multityp, times = 4000, INTs = INTs, Rmax = 2)
-ge.mult2 <- get_eq(multityp, times = 4000, INTs = INTs, Rmax = 3)
+ge.mult2 <- get_eq(multityp, times = 1000, INTs = INTs, Rmax = 3)
 
 sapply(ge.mult$eqst, length)
 sapply(ge.mult1$eqst, length)
@@ -243,7 +246,7 @@ test <- impacts(ra.mult, ge.mult)
 #################################################################################################
 
 S = 100
-comptyp <- lapply(1:10, function(x){
+comptyp <- lapply(1:5, function(x){
   mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
   tat <- mats*-1
   return((tat))
@@ -251,8 +254,9 @@ comptyp <- lapply(1:10, function(x){
 
 ge.comp <- get_eq(comptyp, times = 4000, INTs = INTs)
 ra.comp <- remove_all(ge.comp)
+test2 <- impacts(ra.comp, ge.comp)
 
-predtyp <- lapply(1:10, function(x){
+predtyp <- lapply(1:5, function(x){
   mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = T), sparse = F)
   for(i in 1:nrow(mats)){for(j in 1:ncol(mats)){if(mats[i,j] == 1){mats[j,i] <- -1}else{next}}}
   return(mats)
@@ -261,7 +265,7 @@ predtyp <- lapply(1:10, function(x){
 ge.pred <- get_eq(predtyp, times = 4000, INTs = INTs)
 ra.pred <- remove_all(ge.pred)
 
-mututyp <- lapply(1:10, function(x){
+mututyp <- lapply(1:5, function(x){
   mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
   return((mats))
 })
