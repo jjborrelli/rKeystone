@@ -1,3 +1,7 @@
+#save.image("~/Desktop/keystoneDATA.rData")
+#load("~/Desktop/keystoneDATA.rData")
+
+
 library(igraph)
 library(NetIndices)
 library(deSolve)
@@ -181,33 +185,54 @@ remove.sp <- function(sp, parms, states){
   return(sppdf)
 }
 
+df1 <- list()
+for(x in unique(persist$comm)){
+  gr <- ge$eqgr[[x]]
+  m <- ge$eqm[[x]]
+  st1 <- ge$eqst[[x]]
+  mre <- c(NA)
+  mim <- c(NA)
+  for(i in persist$spr[persist$comm == x]){
+    jf <- jacobian.full(st1[-i], func = lvmodK, parms = list(alpha = gr[-i], m = m[-i,-i], K = 20))
+    mre[i] <- max(Re(eigen(jf)$values))
+    mim[i] <- Im(eigen(jf)$values)[which.max(Re(eigen(jf)$values))]
+  }
+  df1[[x]] <- data.frame(comm = x, sp = persist$spr[persist$comm == x], mre = mre[!is.na(mre)], mim = mim[!is.na(mre)])
+  print(x)
+}
+
 impacts <- function(ra, ge){
   persist <- aggregate(ra$exts, list(spr = ra$spR, comm = ra$comm), function(x) sum(x)/(length(x)-1))
   dbio <- aggregate(ra$fBio - ra$iBio, list(spr = ra$spR, comm = ra$comm), function(x) c(median(x[x < 0], na.rm = T),median(x[x > 0], na.rm = T)))
   
-  eigs <- lapply(1:length(ge$eqm), function(x){
+  eigs <- lapply(unique(persist$comm), function(x){
     gr <- ge$eqgr[[x]]
     m <- ge$eqm[[x]]
     st1 <- ge$eqst[[x]]
-    mre <- c()
-    mim <- c()
-    for(i in 1:nrow(m)){
+    mre <- c(NA)
+    mim <- c(NA)
+    for(i in persist$spr[persist$comm == x]){
       jf <- jacobian.full(st1[-i], func = lvmodK, parms = list(alpha = gr[-i], m = m[-i,-i], K = 20))
       mre[i] <- max(Re(eigen(jf)$values))
       mim[i] <- Im(eigen(jf)$values)[which.max(Re(eigen(jf)$values))]
     }
-    return(data.frame(comm = x, sp = 1:length(mre), mre, mim))
+    return(data.frame(comm = x, sp = persist$spr[persist$comm == x], mre = mre[!is.na(mre)], mim = mim[!is.na(mre)]))
   })
+  
+  degs <- aggregate(ra$iDeg, list(spr = ra$spR, comm = ra$comm), function(x) x)
+  degs <- apply(degs, 1, function(x) x$x[x$spr[1]])
   
   c10 <- aggregate(ra$cv10, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   c100 <- aggregate(ra$cv100, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   c1k <- aggregate(ra$cv1k, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   
+  ra$fBio[ra$fBio < 10^-5] <- 0
   d1 <- aggregate(ra$iBio, list(spr = ra$spR, comm = ra$comm), function(x) vegan::diversity(x))$x
   d2 <- aggregate(ra$fBio, list(spr = ra$spR, comm = ra$comm), function(x) vegan::diversity(x))$x
   
   eigs <- do.call(rbind, eigs)
-  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, div = d2-d1, eigre = eigs$mre, eigim = eigs$mim)
+  
+  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, div = d2-d1, degs = degs, eigre = eigs$mre, eigim = eigs$mim)
   
   return(dfall)
 }
@@ -219,11 +244,12 @@ impacts <- function(ra, ge){
 SteinInt <- read.csv("~/Desktop/GitHub/microbial-dyn/Data/ecomod-ints.csv", row.names = 1)
 INTs <- c(SteinInt[upper.tri(SteinInt)],SteinInt[lower.tri(SteinInt)])
 
-S = 1000
-multityp <- lapply(1:5, function(x){
+S = 100
+multityp <- lapply(1:50, function(x){
   p1 <- runif(1,0,1)
   p2 <- runif(1, p1, 1)
-  mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
+  c1 <- runif(1, .1, .3)
+  mats <- get.adjacency(erdos.renyi.game(S, c1, "gnp", directed = F), sparse = F)
   #tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
   tat <- mats*sample(c(-1,1,0), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
   return((tat))
@@ -231,11 +257,18 @@ multityp <- lapply(1:5, function(x){
 
 ge.mult <- get_eq(multityp, times = 4000, INTs = INTs, Rmax = 1)
 ge.mult1 <- get_eq(multityp, times = 4000, INTs = INTs, Rmax = 2)
-ge.mult2 <- get_eq(multityp, times = 1000, INTs = INTs, Rmax = 3)
+ge.mult2 <- get_eq(multityp, times = 4000, INTs = INTs, Rmax = 3)
 
-sapply(ge.mult$eqst, length)
-sapply(ge.mult1$eqst, length)
-sapply(ge.mult2$eqst, length)
+a <- sapply(ge.mult$eqst, length)
+b <- sapply(ge.mult1$eqst, length)
+d <- sapply(ge.mult2$eqst, length)
+anova(lm(c(a,b,d)~c(rep("a",5),rep("b",5),rep("d",5))))
+boxplot(c(a,b,d)~c(rep("a",5),rep("b",5),rep("d",5)))
+
+sapply(ge.mult$eqst, function(x) {(20/length(x))})
+sapply(ge.mult1$eqst, function(x) {(20/length(x))})
+sapply(ge.mult2$eqst, function(x) {(20/length(x))})
+
 
 ra.mult <- remove_all(ge.mult)
 
@@ -246,8 +279,9 @@ test <- impacts(ra.mult, ge.mult)
 #################################################################################################
 
 S = 100
-comptyp <- lapply(1:5, function(x){
-  mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
+comptyp <- lapply(1:50, function(x){
+  c1 <- runif(1, .1, .3)
+  mats <- get.adjacency(erdos.renyi.game(S, c1, "gnp", directed = F), sparse = F)
   tat <- mats*-1
   return((tat))
 })
@@ -256,17 +290,21 @@ ge.comp <- get_eq(comptyp, times = 4000, INTs = INTs)
 ra.comp <- remove_all(ge.comp)
 test2 <- impacts(ra.comp, ge.comp)
 
-predtyp <- lapply(1:5, function(x){
-  mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = T), sparse = F)
+predtyp <- lapply(1:50, function(x){
+  c1 <- runif(1, .1, .3)
+  mats <- get.adjacency(erdos.renyi.game(S, c1, "gnp", directed = T), sparse = F)
   for(i in 1:nrow(mats)){for(j in 1:ncol(mats)){if(mats[i,j] == 1){mats[j,i] <- -1}else{next}}}
   return(mats)
 })
 
 ge.pred <- get_eq(predtyp, times = 4000, INTs = INTs)
 ra.pred <- remove_all(ge.pred)
+im.pred <- impacts(ra.pred, ge.pred)
 
-mututyp <- lapply(1:5, function(x){
-  mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
+
+mututyp <- lapply(1:50, function(x){
+  c1 <- runif(1, .1, .3)
+  mats <- get.adjacency(erdos.renyi.game(S, c1, "gnp", directed = F), sparse = F)
   return((mats))
 })
 
