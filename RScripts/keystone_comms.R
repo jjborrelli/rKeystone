@@ -222,6 +222,8 @@ impacts <- function(ra, ge){
   degs <- aggregate(ra$iDeg, list(spr = ra$spR, comm = ra$comm), function(x) x)
   degs <- apply(degs, 1, function(x) x$x[x$spr[1]])
   
+  rbio <- aggregate(ra$sprBIO, list(spr = ra$spR, comm = ra$comm), function(x) median(x))
+  
   c10 <- aggregate(ra$cv10, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   c100 <- aggregate(ra$cv100, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   c1k <- aggregate(ra$cv1k, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
@@ -232,7 +234,7 @@ impacts <- function(ra, ge){
   
   eigs <- do.call(rbind, eigs)
   
-  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, div = d2-d1, degs = degs, eigre = eigs$mre, eigim = eigs$mim)
+  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, div = d2-d1, degs = degs, eigre = eigs$mre, eigim = eigs$mim, rbio = rbio$x)
   
   return(dfall)
 }
@@ -272,7 +274,33 @@ sapply(ge.mult2$eqst, function(x) {(20/length(x))})
 
 ra.mult <- remove_all(ge.mult)
 
-test <- impacts(ra.mult, ge.mult)
+im.mult <- impacts(ra.mult, ge.mult)
+
+e2 <- list()
+eA <-c()
+for(x in 1:length(ge.comp$eqm)){
+
+  tm <- ge.comp$eqm[[x]]
+  tst <- ge.comp$eqst[[x]]
+  tgr <- ge.comp$eqgr[[x]]
+  
+  jf1 <- jacobian.full(y = tst, func = lvmodK, parms = list(alpha = tgr, m = tm, K = 20))
+  jf2 <- sign(jf1)
+  nL <- sum(jf2 != 0)
+  eA[x] <- max(Re(eigen(jf1)$values))
+  e1 <- c()
+  for(i in 1:1000){
+    nI <- abs(rnorm(nL))
+    jf3 <- jf2
+    jf3[jf2 != 0] <- rnorm(sum(jf2 != 0), jf2[jf2 != 0], .1)
+    #jf3 <- jf3 * jf2
+    
+    e1[i] <- max(Re(eigen(jf3)$values))
+  }
+  
+  e2[[x]] <- (e1)
+}
+
 
 #################################################################################################
 #################################################################################################
@@ -288,7 +316,7 @@ comptyp <- lapply(1:50, function(x){
 
 ge.comp <- get_eq(comptyp, times = 4000, INTs = INTs)
 ra.comp <- remove_all(ge.comp)
-test2 <- impacts(ra.comp, ge.comp)
+im.comp <- impacts(ra.comp, ge.comp)
 
 predtyp <- lapply(1:50, function(x){
   c1 <- runif(1, .1, .3)
@@ -310,3 +338,4 @@ mututyp <- lapply(1:50, function(x){
 
 ge.mutu <- get_eq(mututyp, times = 4000, INTs = INTs*.2)
 ra.mutu <- remove_all(ge.mutu)
+im.mutu <- impacts(ra.mutu, ge.mutu)
