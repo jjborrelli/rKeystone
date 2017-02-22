@@ -86,7 +86,7 @@ get_eq <- function(mats, times, INTs, Rmax = 1, Kval = 20){
 }
 
 
-remove_all <- function(eqcomm){
+remove_all <- function(eqcomm, tmax){
   eqgrs <- eqcomm$eqgr
   eqmat <- eqcomm$eqm
   eqst <- eqcomm$eqst
@@ -98,7 +98,7 @@ remove_all <- function(eqcomm){
     
     dflist <- list()
     for(i in 1:nrow(par$m)){
-      dflist[[i]] <- remove.sp(i, parms = par, states = st1)
+      dflist[[i]] <- remove.sp(i, parms = par, states = st1, times = tmax)
       print(i)
     }
     
@@ -154,32 +154,32 @@ coefvar <- function(dyna){
   return(data.frame(cv10 = cv10, cv100 = cv100, cv1k = cv1k, cvfi100 = cvfi))
 }
 
-remove.sp <- function(sp, parms, states){
+remove.sp <- function(sp, parms, states, times = 2000){
   rbio <- states[sp]
   rbio.rel <- states[sp]/sum(states)
   states[sp] <- 0
-  test <- ode(states, 1:4000, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:4000))
+  test <- ode(states, 1:times, parms = parms, func = lvmodK, events = list(func = ext1, time =  1:times))
   print(matplot(test[,-1], typ = "l"))
   
-  if(nrow(test) == 4000){
+  if(nrow(test) == times){
     bi <- betweenness(graph.adjacency(abs(sign(parms$m))))
     br <- rep(NA, length(bi))
     br[-sp] <- betweenness(graph.adjacency(abs(sign(parms$m[-sp,-sp]))))
     bf <- rep(NA, length(bi))
-    bf[test[4000,-1]!=0] <- betweenness(graph.adjacency(abs(sign(parms$m[test[4000,-1]!=0,test[4000,-1]!=0]))))
+    bf[test[times,-1]!=0] <- betweenness(graph.adjacency(abs(sign(parms$m[test[times,-1]!=0,test[times,-1]!=0]))))
     
     di <- degree(graph.adjacency(abs(sign(parms$m))))
     dr <- rep(NA, length(di))
     dr[-sp] <- degree(graph.adjacency(abs(sign(parms$m[-sp,-sp]))))
     df <- rep(NA, length(di))
-    df[test[4000,-1]!=0] <- degree(graph.adjacency(abs(sign(parms$m[test[4000,-1]!=0,test[4000,-1]!=0]))))
+    df[test[times,-1]!=0] <- degree(graph.adjacency(abs(sign(parms$m[test[times,-1]!=0,test[times,-1]!=0]))))
     
     
     sppdf <- data.frame(spR = sp, spT = 1:nrow(parms$m), coefvar(test[,-1]), sprBIO = rbio, sprREL = rbio.rel, iBio = test[1,-1],
-                        t10Bio = test[10,-1], t100Bio = test[100,-1], fBio = test[4000,-1], iBr = test[1,-1]/sum(test[1,-1]),
-                        fBr = test[4000,-1]/sum(test[4000,-1]), iBet = bi, rBet = br, fBet = bf, iDeg = di, rDeg = dr, fDeg = df,
+                        t10Bio = test[10,-1], t100Bio = test[100,-1], fBio = test[times,-1], iBr = test[1,-1]/sum(test[1,-1]),
+                        fBr = test[times,-1]/sum(test[times,-1]), iBet = bi, rBet = br, fBet = bf, iDeg = di, rDeg = dr, fDeg = df,
                         gr = parms$alpha, self = diag(parms$m), 
-                        exts = (test[4000,-1] != 0))
+                        exts = (test[times,-1] != 0))
   }else{
     sppdf <- NA
   }
@@ -215,6 +215,7 @@ impacts <- function(ra, ge){
   c10 <- aggregate(ra$cv10, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   c100 <- aggregate(ra$cv100, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   c1k <- aggregate(ra$cv1k, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
+  cvfi <- aggregate(ra$cvfi100, list(spr = ra$spR, comm = ra$comm), function(x) median(x, na.rm = T))$x
   
   ra$fBio[ra$fBio < 10^-5] <- 0
   d1 <- aggregate(ra$iBio, list(spr = ra$spR, comm = ra$comm), function(x) vegan::diversity(x))$x
@@ -228,7 +229,9 @@ impacts <- function(ra, ge){
   
   eigs <- do.call(rbind, eigs)
   
-  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, div = (d2-d1)/d1, simp = (d2a-d1a)/d1a, invs = (d2b-d1b)/d1b, degs = degs, eigre = eigs$mre, eigim = eigs$mim, rbio = rbio$x, rrel = relbio$x)
+  dfall <- data.frame(persist, dbioN = dbio$x[,1], dbioP = dbio$x[,2], c10, c100, c1k, cvfi,
+                      div = (d2-d1)/d1, simp = (d2a-d1a)/d1a, invs = (d2b-d1b)/d1b, 
+                      degs = degs, eigre = eigs$mre, eigim = eigs$mim, rbio = rbio$x, rrel = relbio$x)
   
   return(dfall)
 }
@@ -266,13 +269,14 @@ sapply(ge.mult1$eqst, function(x) {(20/length(x))})
 sapply(ge.mult2$eqst, function(x) {(20/length(x))})
 
 
-ra.mult <- remove_all(ge.mult)
+ra.mult <- remove_all(ge.mult, tmax = 2000)
 
 im.mult <- impacts(ra.mult, ge.mult)
 
 pcM <- princomp(im.mult[-c(1,2,12,15,16,17)])
 loadings(pcM)
 
+dim(im.mult)
 
 e2 <- list()
 eA <-c()
@@ -327,7 +331,7 @@ predtyp <- lapply(1:5, function(x){
 })
 
 ge.pred <- get_eq(predtyp, times = 4000, INTs = INTs)
-ra.pred <- remove_all(ge.pred)
+ra.pred <- remove_all(ge.pred, tmax = 1000)
 im.pred <- impacts(ra.pred, ge.pred)
 
 pcP <- princomp(im.pred[-c(1,2,12,15,16,17)])
@@ -344,17 +348,30 @@ ra.mutu <- remove_all(ge.mutu)
 im.mutu <- impacts(ra.mutu, ge.mutu)
 
 
+tats <- lapply(1:100, function(x){
+  p1 <- runif(1,0,.1)
+  p2 <- runif(1, p1, 1)
+  mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
+  #tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
+  tat <- mats*sample(c(0,1,-1), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
+  return((tat))
+})
+
+ge.tat <- get_eq(tats, times = 2000, INTs = INTs)
+ra.tat <- remove_all(ge.tat, tmax = 1000)
+im.tat <- impacts(ra.tat, ge.tat)
 #################################################################################################
 #################################################################################################
 #################################################################################################
 
 testA <- rbind(cbind(im.mult, typ = "mult"), cbind(im.comp, typ = "comp"), cbind(im.pred, typ = "pred"))
-pcA <- princomp(testA[-c(1,2,12,15,16,17)])
+pcA <- princomp(testA[-c(1,2,10,13,14)])
 summary(pcA)
 loadings(pcA)
 plot(pcA$scores[,1]~testA$rbio)
 plot(pcA$scores[,1]~testA$rrel)
 cor.test(pcA$scores[,1],testA$rrel)
+plot(pcA$scores[,1:2])
 
 ggplot(data.frame(pc1 = pcA$scores[,1], rela = testA$rrel, typ = testA$typ), aes(x = rela, y = pc1)) + geom_point(size = 3, aes(col = typ)) + facet_grid(~typ)
 

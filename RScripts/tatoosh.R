@@ -94,8 +94,8 @@ S = 100
 tats <- lapply(1:100, function(x){
   p1 <- runif(1,0,.1)
   p2 <- runif(1, p1, 1)
-  mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
-  #tat <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
+  #mats <- get.adjacency(erdos.renyi.game(S, .2, "gnp", directed = F), sparse = F)
+  mats <- tatoosh*sample(c(1,-1), length(tatoosh), replace = T, prob = c(p1,1-p1))
   tat <- mats*sample(c(0,1,-1), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
   return((tat))
 })
