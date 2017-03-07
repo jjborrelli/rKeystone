@@ -54,6 +54,75 @@ use <- sapply(r2, nrow) == 1000 & sapply(r2, function(x) sum(tail(x, 1)[-1] > 0)
 use[is.na(use)] <- FALSE
 # which species are present in equilibrial communities
 eqcomm <- sapply(1:sum(use), function(x) spp[use][[x]][which(r2[use][[x]][1000,-1] > 0)])
-
+eqab <- sapply(1:sum(use), function(x) r2[use][[x]][1000,which(r2[use][[x]][1000,] > 0)][-1])
 t.simend <- Sys.time()                                              # note time initial comm sim ends
+
+m.par <- lapply(1:length(spp[use]), function(x) mats[eqcomm[[x]], eqcomm[[x]]])
+gr.l <- lapply(1:length(spp[use]), function(x) growth[eqcomm[[x]]])
+jacs <- lapply(1:sum(use), function(x) jacobian.full(eqab[[x]], func = lvmod, parms = list(alpha = gr.l[[x]], m = m.par[[x]])))
+eigs <- sapply(jacs, function(x) max(Re(eigen(x)$values)))
+
+jacs2 <- lapply(1:5, function(x) jacobian.full(ge.mult2$eqst[[x]], func = lvmodK2, parms = list(alpha = ge.mult2$eqgr[[x]], m = ge.mult2$eqm[[x]], K = ge.mult2$eqkv[[x]])))
+eigs2 <- sapply(jacs2, function(x) max(Re(eigen(x)$values)))
+hist(abs(diag(jacs2[[1]])))
+hist(abs(diag(jacs[[1]])))
+
+get_bestfit2 <- function(avec){
+  fits1 <- lapply(avec, fitsad, sad = "lnorm")
+  fits2 <- lapply(avec, fitsad, sad = "power")
+  #fits3 <- lapply(avec, fitsad, sad = "powbend")
+  fits4 <- lapply(avec, fitsad, sad = "mzsm")
+  fits5 <- lapply(avec, fitsad, sad = "poilog")
+  fits6 <- lapply(avec, fitsad, sad = "bs")
+  fits7 <- lapply(avec, fitsad, sad = "ls")
+  fits8 <- lapply(avec, fitsad, sad = "weibull")
+  fit1 <- sapply(fits1, AIC)
+  fit2 <- sapply(fits2, AIC)
+  #fit3 <- sapply(fits3, AIC)
+  fit4 <- sapply(fits4, AIC)
+  fit5 <- sapply(fits5, AIC)
+  fit6 <- sapply(fits6, AIC)
+  fit7 <- sapply(fits7, AIC)
+  fit8 <- sapply(fits8, AIC)
+  #sapply(fits5, function(x) c(coef(x), AICvol = AIC(x)))
+  t.wins <- table(apply(cbind(fit1, fit2, fit4, fit5, fit6, fit7, fit8), 1, 
+                        function(x){c("lnorm", "power", "mzsm", "poilog", "bs", "ls", "weibull")[which.min(x)]}))
+  #tAIC <- cbind(fit1, fit2, fit3, fit4, fit5, fit6, fit7, fit8)
+  #colnames(tAIC) <- c("lnorm", "power", "powbend", "mzsm", "poilog", "bs", "ls", "weibull")
+  #return(tAIC)
+  return(t.wins)
+}
+
+get_bestfit3 <- function(avec){
+  fits1 <- lapply(avec, fitsad, sad = "lnorm")
+  fits2 <- lapply(avec, fitsad, sad = "power")
+  #fits3 <- lapply(avec, fitsad, sad = "powbend")
+  fits4 <- lapply(avec, fitsad, sad = "mzsm")
+  fits5 <- lapply(avec, fitsad, sad = "poilog")
+  fits6 <- lapply(avec, fitsad, sad = "bs")
+  fits7 <- lapply(avec, fitsad, sad = "ls")
+  fits8 <- lapply(avec, fitsad, sad = "weibull")
+  fit1 <- sapply(fits1, AIC)
+  fit2 <- sapply(fits2, AIC)
+  #fit3 <- sapply(fits3, AIC)
+  fit4 <- sapply(fits4, AIC)
+  fit5 <- sapply(fits5, AIC)
+  fit6 <- sapply(fits6, AIC)
+  fit7 <- sapply(fits7, AIC)
+  fit8 <- sapply(fits8, AIC)
+  #sapply(fits5, function(x) c(coef(x), AICvol = AIC(x)))
+  #t.wins <- table(apply(cbind(fit1, fit2, fit4, fit5, fit6, fit7, fit8), 1, 
+  #                      function(x){c("lnorm", "power", "mzsm", "poilog", "bs", "ls", "weibull")[which.min(x)]}))
+  tAIC <- cbind(fit1, fit2, fit4, fit5, fit6, fit7, fit8)
+  colnames(tAIC) <- c("lnorm", "power", "mzsm", "poilog", "bs", "ls", "weibull")
+  #return(tAIC)
+  return(tAIC)
+}
+
+gbf2a <- get_bestfit2(lapply(eqab, get_abundvec))
+gbf2a
+gbf3a <- get_bestfit3(lapply(eqab, get_abundvec))
+
+boxplot(t(apply(gbf3a, 1, function(x) x - min(x))))
+
 
