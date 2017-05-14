@@ -13,7 +13,14 @@ library(rootSolve)
 # Lotka-Volterra model 
 lvm <- function(times, state, parms){
   with(as.list(c(state, parms)), {
-    dB <- state * parms$alpha + state * parms$m %*% state 
+    dB <- (state * parms$alpha) + (state * parms$m %*% state) 
+    list(dB)
+  })
+}
+
+lvm2 <- function(times, state, parms){
+  with(as.list(c(state, parms)), {
+    dB <- (state * parms$alpha) - (parms$aii * state) + (state * parms$m %*% state) 
     list(dB)
   })
 }
@@ -39,10 +46,11 @@ ext2 <- function(times, states, parms){
 fill_mat <- function(mat, sdevp = .5, sdevn = 1){
   t1 <- mat
   diag(t1) <- 0  #-rbeta(length(diag(t1)), 1.1, 5)*5
-  t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), 0, sdevp))#runif(sum(t1 == 1), 0, 1) #
+  #t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), 0, sdevp))#
+  t1[t1 == 1] <- runif(sum(t1 == 1), 0, 1) #
  
-  t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), 0, sdevn))#runif(sum(t1 == -1), -1, 0) #
-  
+  #t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), 0, sdevn)) #
+  t1[t1 == -1] <- runif(sum(t1 == -1), -1, 0) 
   return(t1)
 }
 
@@ -61,13 +69,15 @@ isim <- function(S, tf, efun = ext1, plot = FALSE){
     multityp <- mats*sample(c(-1,1,0), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
     
     multityp.fill <- fill_mat(multityp, sdevp = .5, sdevn = .5)
-    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -1, 0)
-    
+    #diag(multityp.fill) <- 0
+    #self <- runif(length(diag(multityp.fill)), 0, 1)
+    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -2, 0)
     a.i <- runif(nrow(multityp.fill), .1, .5)
     
-    par1 <- list(alpha = runif(nrow(multityp.fill), 0, .1), m = multityp.fill)
+    par1 <- list(alpha = runif(nrow(multityp.fill), 0, .1), m = multityp.fill, aii = self)
     dyn <-(ode(a.i, times = 1:tf, func = lvm, parms = par1, events = list(func = efun, time =  1:tf)))
     
+    if(any(is.na(dyn))){cond <- FALSE;next}
     #if(nrow(dyn) == tf & nrow(dyn2) == tf){
     if(nrow(dyn) == tf){
       spp <- dyn[tf, -1] > 10^-10
@@ -76,6 +86,7 @@ isim <- function(S, tf, efun = ext1, plot = FALSE){
     }else{
       cond <- FALSE
     }
+    
   }
   
   if(plot){
@@ -122,6 +133,8 @@ tteq <- c()
 ei <- c()
 ext <- c()
 div <- c()
+cvi <- matrix(nrow = nrow(mat), ncol = ncol(mat))
+cvf <- matrix(nrow = nrow(mat), ncol = ncol(mat))
 for(i in 1:nrow(mat)){
   ia <- init$dyn1[1000,-1][init$dyn1[1000,-1] > 10^-10]
   ia[i] <- 0
@@ -141,6 +154,11 @@ for(i in 1:nrow(mat)){
   tteq[i] <- sum(e_tr > 0)
   ei[i] <- e_tr[1000]
   div[i] <- vegan::diversity(dyn[1000,-1][dyn[1000,-1]>10^-10])
+  cvi[i,] <- apply(dyn[1:100,-1], 2, function(x) sd(x)/mean(x))
+  cvf[i,] <- apply(dyn[900:1000,-1], 2, function(x) sd(x)/mean(x))
 }
 ch*100
 div
+tteq
+plot(ei~ch)
+plot(tteq~ch)
