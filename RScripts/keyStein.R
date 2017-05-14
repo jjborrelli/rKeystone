@@ -45,7 +45,7 @@ library(rootSolve)
 combos <- lapply(2:11, function(x) combn(11, x))
 Bs <- matrix(runif(11000), nrow = 1000, ncol = 11)
 
-co1 <- combos[[8]]
+co1 <- combos[[10]]
 tqss <- function(Bs, co1, grow1, ints1){
   qss <- c()
   for(i in 1:ncol(co1)){
@@ -60,17 +60,31 @@ tqss <- function(Bs, co1, grow1, ints1){
   return(qss)
 }
 
-qsstest <- lapply(combos, function(x) tqss(Bs, x, grow1, ints1))
+# 2 -- 10
+# 6 -- 324
+# 7 -- 158
+# 8 -- 38
+co1 <- combos[[8]]
+
+tq1 <- tqss(Bs, co1, grow1, ints1)
+
+qsstest <- lapply(combos[c(2,6,7,8)], function(x) tqss(Bs, x, grow1, ints1))
 
 ## #################################
 ## #################################
 ## #################################
 
 
+library(deSolve)
 
+dyna <- matrix(nrow = 1000, ncol = 11)
+for(i in 1:1000){
+  res1 <- ode(runif(nrow(ints1),.1,1), 1:1000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:1000))
+  dyna[i,] <- res1[1000,-1]
+}
+unique((dyna > 0)*1)
 
-
-res1 <- ode(runif(nrow(ints1),1,10), 1:1000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:1000))
+res1 <- ode(runif(nrow(ints1),.1,1), 1:1000, parms = parms, func = lvmod, events = list(func = ext1, time =  1:1000))
 res1[1000,-1]
 matplot(res1[,-1], typ = "l", lwd = 2)
 
