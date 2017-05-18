@@ -215,6 +215,47 @@ ke1
 ###########################################
 
 # info on species level interactions
+int_sp <- function(mat){
+  d1 <- diag(mat)
+  diag(mat) <- 0
+  mm1 <- matrix(nrow = nrow(mat), ncol = 18)
+  colnames(mm1) <- c("self", "nComp", "CompIn", "CompOut", "nMut", "MutIn", "MutOut", "nPred", "PredIn", "PredOut", "nAmens", "AmensIn", "AmensOut", "nComm", "CommIn", "CommOut", "allIn", "allOut")
+  for(i in 1:nrow(mat)){
+    i1 <- mat[,i]
+    i2 <- mat[i,]
+    
+    comp <- which(i1 < 0 & i2 < 0)
+    mut <- which(i1 > 0 & i2 > 0)
+    pred <- which(i1 > 0 & i2 < 0 | i1 < 0 & i2 > 0)
+    amens <- which(i1 < 0 & i2  == 0 | i1 == 0 & i2 < 0)
+    comm <- which(i1 > 0 & i2  == 0 | i1 == 0 & i2 > 0)
+    
+    mm1[i, "nComp"] <- length(comp)
+    mm1[i, "nMut"] <- length(mut)
+    mm1[i, "nPred"] <- length(pred)
+    mm1[i, "nAmens"] <- length(amens)
+    mm1[i, "nComm"] <- length(comm)
+    
+    mm1[i, "CompIn"] <- ifelse(is.na(mean(i1[comp])), 0, mean(i1[comp]))
+    mm1[i, "MutIn"] <- ifelse(is.na(mean(i1[mut])), 0, mean(i1[mut]))
+    mm1[i, "PredIn"] <- ifelse(is.na(mean(i1[pred])), 0, mean(i1[pred]))
+    mm1[i, "AmensIn"] <- ifelse(is.na(mean(i1[amens])), 0, mean(i1[amens]))
+    mm1[i, "CommIn"] <- ifelse(is.na(mean(i1[comm])), 0, mean(i1[comm]))
+    
+    mm1[i, "CompOut"] <- ifelse(is.na(mean(i2[comp])), 0, mean(i2[comp]))
+    mm1[i, "MutOut"] <- ifelse(is.na(mean(i2[mut])), 0, mean(i2[mut]))
+    mm1[i, "PredOut"] <- ifelse(is.na(mean(i2[pred])), 0, mean(i2[pred]))
+    mm1[i, "AmensOut"] <- ifelse(is.na(mean(i2[amens])), 0, mean(i2[amens]))
+    mm1[i, "CommOut"] <- ifelse(is.na(mean(i2[comm])), 0, mean(i2[comm]))
+    
+    mm1[i, "self"] <- d1[i]
+    mm1[i, "allIn"] <- ifelse(sum(i1 != 0) > 0, mean(i1[i1 != 0]), 0)
+    mm1[i, "allOut"] <- ifelse(sum(i2 != 0) > 0, mean(i2[i2 != 0]), 0)
+  }
+  
+  
+  return(mm1)
+}
 
 # network level data
 
