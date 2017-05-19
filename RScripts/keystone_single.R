@@ -119,12 +119,12 @@ persist <- function(dyn, tf, alp, mat){
 
 biodiff <- function(dyn, tf){
   ch <- dyn[tf,-1] - dyn[1,-1]
-  totalbd <- (sum(dyn[tf,-1]) - sum(dyn[1,-1]))/sum(dyn[1,-1])
+  totalbd <- (sum(dyn[tf,-1]) - sum(dyn[1,-1]))/sum(dyn[1,-1])*100
   npos <- sum(ch > 0)
-  mpos <- median(ch[ch > 0])
+  mpos <- mean(ch[ch > 0])
   mp <- max(ch[ch > 0])
   nneg <- sum(ch < 0)
-  mneg <- median(ch[ch < 0])
+  mneg <- mean(ch[ch < 0])
   mn<- min(ch[ch < 0])
   return(c(tot = totalbd, npos = npos, mpos = mpos, maxp = mp, nneg = nneg, mneg = mneg, maxn = mn))
 }
@@ -141,7 +141,7 @@ cvar <- function(dyn, ntimes = 100){
 ###########################################
 ###########################################
 
-key_effect <- function(init, plots = TRUE){ 
+key_effect <- function(init, mod = NULL,  plots = TRUE){ 
   nt <- nrow(init$dyn1)
   spp <- init$dyn1[nt,-1] > 10^-10
   mat <- init$m[spp,spp]
@@ -150,6 +150,7 @@ key_effect <- function(init, plots = TRUE){
   pars <- list(alpha = alp, m = mat) 
   
   div <- c()
+  mmch <- list()
   per <- matrix(nrow = nrow(mat), ncol = 3)
   colnames(per) <- c("ext", "tteq", "ls")
   bdiff <- matrix(nrow = nrow(mat), ncol = 7)
@@ -175,40 +176,23 @@ key_effect <- function(init, plots = TRUE){
     bdiff[i,] <- biodiff(dyn, nt)
     cvx[[i]] <- cvar(dyn, 100)
     div[i] <- vegan::diversity(dyn[nt,-1][dyn[nt,-1] > 10^-10])
+    
+    if(!is.null(mod)){
+      ch <- dyn[nt,-1][dyn[1,-1] > 0] - dyn[1,-1][dyn[1,-1] > 0]
+      mmch[[i]] <- cbind(aggregate(ch, list(mod[-i]), mean), rmod = mod[i], node = i)
+    }
   }
   cova <- t(sapply(cvx, function(x) apply(x, 2, median, na.rm = T)))
-  impact <- cbind(per, bdiff, cova)
+  impact <- cbind(per, bdiff, cova, div)
+  
+  if(!is.null(mod)){
+    mod.imp <- do.call(rbind, mmch)
+    return(list(impact, mod.imp))
+  }
   
   return(impact)
 }
 
-
-###########################################
-###########################################
-###########################################
-###########################################
-
-s1 <- Sys.time()
-init <- isim(50, 1000, efun = ext1, plot = TRUE)
-#matplot(init$dyn1[,-1], typ = 'l', main = sum(init$dyn1[1000,-1] > 10^-10))
-s1.2 <- Sys.time()
-mat <- init$m[init$dyn1[1000,-1] > 10^-10,init$dyn1[1000,-1] > 10^-10]
-diag(mat) <- 0
-
-g <- graph.adjacency(abs(sign(mat)))
-lay <- layout_with_kk(g)
-
-#plot(g, vertex.size = degree(g), layout = lay)
-
-ra <- init$dyn1[1000,-1][init$dyn1[1000,-1]> 10^-10]/sum(init$dyn1[1000,-1][init$dyn1[1000,-1]> 10^-10])
-plot(g, vertex.size = ra*100, layout = lay, main = sum(init$dyn1[1000,-1] > 10^-10))
-
-s2.1 <- Sys.time()
-ke1 <- key_effect(init)
-s2 <- Sys.time()
-s2 - s1
-
-ke1
 ###########################################
 ###########################################
 ###########################################
@@ -259,4 +243,162 @@ int_sp <- function(mat){
 
 # network level data
 
+sp_role <- function(mat, dyn){
+  # convert to unweighted and weighted graphs 
+  g <- graph.adjacency(abs(sign(mat)))
+  g2 <- graph.adjacency(abs(mat), weighted = T)
+  # unweighted and weighted betweenness
+  b.uw <- betweenness(g)
+  b.w <- betweenness(g2)
+  # degree
+  d.in <- degree(g, mode = "in")
+  d.out <- degree(g, mode = "out")
+  d.tot <- degree(g, mode = "total")
+  # clustering
+  cc.uw <- transitivity(g2, "local")
+  cc.w <- transitivity(g2, "weighted")
+  # average path length
+  apl.uw.mean <- colMeans(distances(g))
+  #apl.uw.median <- apply(distances(g), 2, median)
+  apl.w.mean <- colMeans(distances(g2))
+  #apl.w.median <- apply(distances(g2), 2, median)
+  # biomass
+  bio <- dyn[nrow(dyn), -1][dyn[nrow(dyn), -1] > 0]
+  cvbio <- apply(dyn[(nrow(dyn)-10):(nrow(dyn)),-1][,dyn[nrow(dyn), -1] > 0], 2, function(x) sd(x)/mean(x))
+  # modularity
+  mod <- (rnetcarto::netcarto(abs(sign(mat)))[[1]])
+  mod <- mod[order(as.numeric(as.character(mod$name))),]
+  wc.uw <- walktrap.community(g)
+  wc.mod.uw <- wc.uw$modularity
+  wc.mem.uw <- wc.uw$membership
+  wc.w <- walktrap.community(g2)
+  wc.mod.w <- wc.w$modularity
+  wc.mem.w <- wc.w$membership
+  
+  #res <- matrix(c(b.uw, b.w, d.in, d.out, d.tot, cc.uw, cc.w, apl.uw.mean, apl.uw.median, apl.w.mean, apl.w.median),
+  #              nrow = nrow(mat), ncol = 11)
+  res <- matrix(c(b.uw, b.w, d.in, d.out, d.tot, cc.uw, cc.w, apl.uw.mean, apl.w.mean, bio, cvbio,
+                  wc.mod.uw, wc.mem.uw, wc.mod.w, wc.mem.w),
+                nrow = nrow(mat), ncol = 15)
+  colnames(res) <- c("bet.uw", "bet.w", "d.in", "d.out", "d.tot", "cc.uw", "cc.w", 
+                     "apl.uw.mu", "apl.w.mu", "bio", "cvbio", "mod.uw", "mem.uw", "mod.w", "mem.w")
+  
+  res <- cbind(res, mod)
+  return(res)
+}
+
 # split network into component interaction webs
+
+
+###########################################
+###########################################
+###########################################
+###########################################
+
+s1 <- Sys.time()
+init <- isim(50, 2000, efun = ext1, plot = TRUE)
+#matplot(init$dyn1[,-1], typ = 'l', main = sum(init$dyn1[1000,-1] > 10^-10))
+s1.2 <- Sys.time()
+mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
+diag(mat) <- 0
+dim(mat)
+g <- graph.adjacency(abs(sign(mat)))
+g2 <- graph.adjacency(mat, weighted = T)
+lay <- layout_with_kk(g)
+
+#plot(g, vertex.size = degree(g), layout = lay)
+
+ra <- init$dyn1[1000,-1][init$dyn1[1000,-1]> 10^-10]/sum(init$dyn1[1000,-1][init$dyn1[1000,-1]> 10^-10])
+plot(g, vertex.size = ra*100, layout = lay, main = sum(init$dyn1[1000,-1] > 10^-10))
+
+nc <- rnetcarto::netcarto(abs(sign(mat)))[[1]]
+nc <- nc[order(as.numeric(as.character(nc$name))),]
+dim(nc) 
+wc.w <-walktrap.community(g2) 
+wc.uw <- walktrap.community(g)
+
+ke1 <- key_effect(init, nc$module)
+sr1 <- sp_role(mat, init$dyn1)
+isp <- int_sp(mat)
+
+s2 <- Sys.time()
+s2 - s1
+
+strt <- Sys.time()
+ke1 <- list()
+sr1 <- list()
+isp <- list()
+for(i in 1:10){
+  init <- isim(50, 2000, efun = ext1, plot = TRUE)
+  #matplot(init$dyn1[,-1], typ = 'l', main = sum(init$dyn1[1000,-1] > 10^-10))
+  s1.2 <- Sys.time()
+  mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
+  diag(mat) <- 0
+  
+  nc <- rnetcarto::netcarto(abs(sign(mat)))[[1]]
+  nc <- nc[order(as.numeric(as.character(nc$name))),]
+  
+  
+  ke1[[i]] <- key_effect(init, nc$module)
+  sr1[[i]] <- sp_role(mat, init$dyn1)
+  
+  mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
+  
+  isp[[i]] <- int_sp(mat)
+}
+fin <- Sys.time()
+fin - strt
+
+comm <- rep(1:10, sapply(sr1, nrow))
+ke1.1 <- rbindlist(lapply(lapply(ke1, "[[", 1), as.data.frame))
+ke1.2 <- rbindlist(lapply(lapply(ke1, "[[", 2), as.data.frame))
+sr <- rbindlist(lapply(sr1, as.data.frame))
+ints <- rbindlist(lapply(isp, as.data.frame))
+
+
+uwfit <- lm(ext ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + role,
+   data = data.frame(ext = ke1.1$ext, sr))
+summary(uwfit)
+
+wfit <- lm(ext ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connectivity + role,
+   data = data.frame(ext = ke1.1$ext, sr))
+summary(wfit)
+
+
+colnames(ints)
+ifit <- lm(ext ~ self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut, data = data.frame(ext = ke1.1$ext, ints)[complete.cases(data.frame(ext = ke1.1$ext, ints)),], na.action = "na.fail")
+summary(ifit)
+d.ifit <- MuMIn::dredge(ifit)
+
+
+library(parallel)
+library(doSNOW)
+strt <- Sys.time()
+cl <- makeCluster(detectCores() - 1)
+clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cvar", "key_effect", "int_sp", "sp_role"))
+registerDoSNOW(cl)
+iter = 21
+
+key.res <- foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
+  init <- isim(50, 2000, efun = ext1, plot = TRUE)
+
+  mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
+  diag(mat) <- 0
+  
+  nc <- rnetcarto::netcarto(abs(sign(mat)))[[1]]
+  nc <- nc[order(as.numeric(as.character(nc$name))),]
+  
+  
+  ke1 <- key_effect(init, nc$module)
+  sr1 <- sp_role(mat, init$dyn1)
+  
+  mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
+  
+  isp <- int_sp(mat)
+  
+  return(list(effect = ke1[[1]], modeffect = ke1[[2]], roles = sr1, ints = isp))
+}
+
+stopCluster(cl)
+fin <- Sys.time()
+fin - strt
