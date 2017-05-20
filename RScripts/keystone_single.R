@@ -65,7 +65,7 @@ fill_mat <- function(mat, dis, p1 = .5, p2 = 1){
 
 # Simulate dynamics
 ## returns connected community and deterministic and stochastic dynamics
-isim <- function(S, tf, efun = ext1, plot = FALSE){
+isim <- function(S, tf, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = FALSE){
   cond <- FALSE
   while(!cond){
     
@@ -77,17 +77,17 @@ isim <- function(S, tf, efun = ext1, plot = FALSE){
     
     multityp <- mats*sample(c(-1,1,0), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
     
-    multityp.fill <- fill_mat(multityp, dis = "beta", p1 = 1, p2 = 4)
+    multityp.fill <- fill_mat(multityp, dis = idis, p1 = dp1, p2 = dp2)
     #diag(multityp.fill) <- 0
     #self <- runif(length(diag(multityp.fill)), 0, 1)
-    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -1, 0)
+    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -self, 0)
     a.i <- runif(nrow(multityp.fill), .1, .5)
     
-    par1 <- list(alpha = runif(nrow(multityp.fill), 0, 1), m = multityp.fill)
+    par1 <- list(alpha = runif(nrow(multityp.fill), 0, Rmax), m = multityp.fill)
     dyn <-(ode(a.i, times = 1:tf, func = lvm, parms = par1, events = list(func = efun, time =  1:tf)))
     
     if(any(is.na(dyn))){cond <- FALSE;next}
-    #if(nrow(dyn) == tf & nrow(dyn2) == tf){
+    
     if(nrow(dyn) == tf){
       spp <- dyn[tf, -1] > 10^-10
       conn <- is.connected(graph.adjacency(abs(sign(multityp.fill[spp,spp]))))
@@ -366,7 +366,7 @@ registerDoSNOW(cl)
 iter = 70
 
 key.res <- foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
-  init <- isim(50, 2000, efun = ext1, plot = TRUE)
+  init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
 
   mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
   diag(mat) <- 0
