@@ -43,14 +43,23 @@ ext2 <- function(times, states, parms){
 }
 
 # Fill interaction matrices with strengths
-fill_mat <- function(mat, sdevp = .5, sdevn = 1){
+fill_mat <- function(mat, dis, p1 = .5, p2 = 1){
   t1 <- mat
-  diag(t1) <- 0  #-rbeta(length(diag(t1)), 1.1, 5)*5
-  #t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), 0, sdevp))#
-  t1[t1 == 1] <- runif(sum(t1 == 1), 0, 1) #
- 
-  #t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), 0, sdevn)) #
-  t1[t1 == -1] <- runif(sum(t1 == -1), -1, 0) 
+  diag(t1) <- 0  
+  
+  if(dis == "beta"){
+    t1[t1 != 0] <- rbeta(sum(t1 != 0), p1, p2) * sign(mat[mat != 0])
+  }else if(dis == "unif"){
+    t1[t1 == 1] <- runif(sum(t1 == 1), 0, p1)
+    t1[t1 == -1] <- runif(sum(t1 == -1), -p2, 0) 
+  }else if(dis == "norm"){
+    t1[t1 == 1] <- abs(rnorm(sum(t1 == 1), 0, p1))
+    t1[t1 == -1] <- -abs(rnorm(sum(t1 == -1), 0, p2))
+  }else{
+    t1[t1 == 1] <- runif(sum(t1 == 1), 0, 1)
+    t1[t1 == -1] <- runif(sum(t1 == -1), -1, 0)
+  }
+   
   return(t1)
 }
 
@@ -68,13 +77,13 @@ isim <- function(S, tf, efun = ext1, plot = FALSE){
     
     multityp <- mats*sample(c(-1,1,0), length(mats), replace = T, prob = c(p1,p2-p1,1-(p2)))
     
-    multityp.fill <- fill_mat(multityp, sdevp = .5, sdevn = .5)
+    multityp.fill <- fill_mat(multityp, dis = "beta", p1 = 1, p2 = 4)
     #diag(multityp.fill) <- 0
     #self <- runif(length(diag(multityp.fill)), 0, 1)
-    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -2, 0)
+    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -1, 0)
     a.i <- runif(nrow(multityp.fill), .1, .5)
     
-    par1 <- list(alpha = runif(nrow(multityp.fill), 0, .1), m = multityp.fill)
+    par1 <- list(alpha = runif(nrow(multityp.fill), 0, 1), m = multityp.fill)
     dyn <-(ode(a.i, times = 1:tf, func = lvm, parms = par1, events = list(func = efun, time =  1:tf)))
     
     if(any(is.na(dyn))){cond <- FALSE;next}
@@ -288,87 +297,64 @@ sp_role <- function(mat, dyn){
 }
 
 # split network into component interaction webs
-
-
-###########################################
-###########################################
-###########################################
-###########################################
-
-s1 <- Sys.time()
-init <- isim(50, 2000, efun = ext1, plot = TRUE)
-#matplot(init$dyn1[,-1], typ = 'l', main = sum(init$dyn1[1000,-1] > 10^-10))
-s1.2 <- Sys.time()
-mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
-diag(mat) <- 0
-dim(mat)
-g <- graph.adjacency(abs(sign(mat)))
-g2 <- graph.adjacency(mat, weighted = T)
-lay <- layout_with_kk(g)
-
-#plot(g, vertex.size = degree(g), layout = lay)
-
-ra <- init$dyn1[1000,-1][init$dyn1[1000,-1]> 10^-10]/sum(init$dyn1[1000,-1][init$dyn1[1000,-1]> 10^-10])
-plot(g, vertex.size = ra*100, layout = lay, main = sum(init$dyn1[1000,-1] > 10^-10))
-
-nc <- rnetcarto::netcarto(abs(sign(mat)))[[1]]
-nc <- nc[order(as.numeric(as.character(nc$name))),]
-dim(nc) 
-wc.w <-walktrap.community(g2) 
-wc.uw <- walktrap.community(g)
-
-ke1 <- key_effect(init, nc$module)
-sr1 <- sp_role(mat, init$dyn1)
-isp <- int_sp(mat)
-
-s2 <- Sys.time()
-s2 - s1
-
-strt <- Sys.time()
-ke1 <- list()
-sr1 <- list()
-isp <- list()
-for(i in 1:10){
-  init <- isim(50, 2000, efun = ext1, plot = TRUE)
-  #matplot(init$dyn1[,-1], typ = 'l', main = sum(init$dyn1[1000,-1] > 10^-10))
-  s1.2 <- Sys.time()
-  mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
-  diag(mat) <- 0
+typ_bet <- function(mat){
+  mat.alt <- mat
   
-  nc <- rnetcarto::netcarto(abs(sign(mat)))[[1]]
-  nc <- nc[order(as.numeric(as.character(nc$name))),]
+  prs <- t(combn(1:nrow(mat), 2))
   
+  i1 <- c()
+  i2 <- c()
   
-  ke1[[i]] <- key_effect(init, nc$module)
-  sr1[[i]] <- sp_role(mat, init$dyn1)
+  for(i in 1:nrow(prs)){
+    i1[i] <- mat[prs[i, 1], prs[i, 2]]
+    i2[i] <- mat[prs[i, 2], prs[i, 1]]
+    if(i1[i] < 0 & i2[i] < 0){
+      mat.alt[prs[i, 1], prs[i, 2]] <- "comp"
+      mat.alt[prs[i, 2], prs[i, 1]] <- "comp"
+    }
+    if(i1[i] > 0 & i2[i] > 0){
+      mat.alt[prs[i, 1], prs[i, 2]] <- "mut"
+      mat.alt[prs[i, 2], prs[i, 1]] <- "mut"
+    }
+    if(i1[i] > 0 & i2[i] < 0 | i1[i] < 0 & i2[i] > 0){
+      mat.alt[prs[i, 1], prs[i, 2]] <- "pred"
+      mat.alt[prs[i, 2], prs[i, 1]] <- "pred"
+    }
+    if(i1[i] < 0 & i2[i]  == 0 | i1[i] == 0 & i2[i] < 0){
+      mat.alt[prs[i, 1], prs[i, 2]] <- "amens"
+      mat.alt[prs[i, 2], prs[i, 1]] <- "amens"
+    }
+    if(i1[i] > 0 & i2[i]  == 0 | i1[i] == 0 & i2[i] > 0){
+      mat.alt[prs[i, 1], prs[i, 2]] <- "comm"
+      mat.alt[prs[i, 2], prs[i, 1]] <- "comm"
+    }
+    
+  }
   
-  mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
+  m <- ifelse(mat.alt == "comp", 1, 0)
+  b.comp <- betweenness(graph.adjacency(m))
   
-  isp[[i]] <- int_sp(mat)
+  m <- ifelse(mat.alt == "mut", 1, 0)
+  b.mut <- betweenness(graph.adjacency(m))
+  
+  m <- ifelse(mat.alt == "pred", 1, 0)
+  b.pred <- betweenness(graph.adjacency(m))
+  
+  m <- ifelse(mat.alt == "amens", 1, 0)
+  b.amens <- betweenness(graph.adjacency(m))
+  
+  m <- ifelse(mat.alt == "comm", 1, 0)
+  b.comm <- betweenness(graph.adjacency(m))
+  
+  m <- matrix(c(b.comp, b.mut, b.pred, b.amens, b.comm), nrow = nrow(mat), ncol = 5)
+  colnames(m) <- c("comp", "mut", "pred", "amens", "comm")
+  return(m)
 }
-fin <- Sys.time()
-fin - strt
 
-comm <- rep(1:10, sapply(sr1, nrow))
-ke1.1 <- rbindlist(lapply(lapply(ke1, "[[", 1), as.data.frame))
-ke1.2 <- rbindlist(lapply(lapply(ke1, "[[", 2), as.data.frame))
-sr <- rbindlist(lapply(sr1, as.data.frame))
-ints <- rbindlist(lapply(isp, as.data.frame))
-
-
-uwfit <- lm(ext ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + role,
-   data = data.frame(ext = ke1.1$ext, sr))
-summary(uwfit)
-
-wfit <- lm(ext ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connectivity + role,
-   data = data.frame(ext = ke1.1$ext, sr))
-summary(wfit)
-
-
-colnames(ints)
-ifit <- lm(ext ~ self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut, data = data.frame(ext = ke1.1$ext, ints)[complete.cases(data.frame(ext = ke1.1$ext, ints)),], na.action = "na.fail")
-summary(ifit)
-d.ifit <- MuMIn::dredge(ifit)
+###########################################
+###########################################
+###########################################
+###########################################
 
 
 library(parallel)
@@ -377,7 +363,7 @@ strt <- Sys.time()
 cl <- makeCluster(detectCores() - 1)
 clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cvar", "key_effect", "int_sp", "sp_role"))
 registerDoSNOW(cl)
-iter = 21
+iter = 70
 
 key.res <- foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
   init <- isim(50, 2000, efun = ext1, plot = TRUE)
@@ -402,3 +388,8 @@ key.res <- foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "
 stopCluster(cl)
 fin <- Sys.time()
 fin - strt
+
+ke <- do.call(rbind, lapply(key.res, "[[", 1))
+ro <- do.call(rbind, lapply(key.res, "[[", 3))
+ints <- do.call(rbind, lapply(key.res, "[[", 4))
+
