@@ -363,9 +363,9 @@ strt <- Sys.time()
 cl <- makeCluster(detectCores() - 1)
 clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cvar", "key_effect", "int_sp", "sp_role"))
 registerDoSNOW(cl)
-iter = 200
+iter = 2000
 
-key.res <- foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
+foreach(x = 1001:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
   init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
 
   mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
@@ -393,9 +393,16 @@ stopCluster(cl)
 fin <- Sys.time()
 fin - strt
 
-ke <- do.call(rbind, lapply(key.res, "[[", 1))
-ro <- do.call(rbind, lapply(key.res, "[[", 3))
-ints <- do.call(rbind, lapply(key.res, "[[", 4))
+keylist <- list()
+for(x in 1:iter){
+  keylist[[x]] <- readRDS(paste("D:/jjborrelli/keystone/", "key", x, ".rds", sep = ""))
+  print(x)
+}
+
+
+ke <- do.call(rbind, lapply(keylist, "[[", 1))
+ro <- do.call(rbind, lapply(keylist, "[[", 3))
+ints <- do.call(rbind, lapply(keylist, "[[", 4))
 
 hist(ke[,"tot"][ke[,"tot"]<0])
 sum(ke[,"tot"] < -20, na.rm  = T)
