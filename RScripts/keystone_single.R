@@ -363,9 +363,9 @@ strt <- Sys.time()
 cl <- makeCluster(detectCores() - 1)
 clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cvar", "key_effect", "int_sp", "sp_role"))
 registerDoSNOW(cl)
-iter = 2000
+iter = 5000
 
-foreach(x = 1001:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
+foreach(x = 4001:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
   init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
 
   mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
@@ -393,17 +393,33 @@ stopCluster(cl)
 fin <- Sys.time()
 fin - strt
 
+t1 <- Sys.time()
 keylist <- list()
 for(x in 1:iter){
   keylist[[x]] <- readRDS(paste("D:/jjborrelli/keystone/", "key", x, ".rds", sep = ""))
   print(x)
 }
-
+t2 <- Sys.time()
+t2-t1
 
 ke <- do.call(rbind, lapply(keylist, "[[", 1))
+kem <- do.call(rbind, lapply(keylist,"[[", 2))
 ro <- do.call(rbind, lapply(keylist, "[[", 3))
 ints <- do.call(rbind, lapply(keylist, "[[", 4))
 
 hist(ke[,"tot"][ke[,"tot"]<0])
 sum(ke[,"tot"] < -20, na.rm  = T)
 dim(ke)
+
+colnames(ro)
+ggplot(kem, aes(x = factor(Group.1), y = log10(x), fill = factor(rmod))) + geom_boxplot()
+
+df <- data.frame(ro, ks = ke[,"tot"])
+df <- df[complete.cases(df),]
+uwfit <- lm(ks ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity,
+            data = df)
+summary(uwfit)
+
+wfit <- lm(ext ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connectivity,
+           data = data.frame(ext = ke[,"tot"], ro))
+summary(wfit)
