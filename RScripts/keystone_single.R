@@ -105,6 +105,43 @@ isim <- function(S, tf, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, 
   return(list(m = multityp.fill, dyn1 = dyn, alpha = par1$alpha))
 }
 
+# Simulate dynamics for tatoosh interaction web
+## returns connected community and deterministic and stochastic dynamics
+isim_tatoosh <- function(tf, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = FALSE, mats = tatoosh){
+  cond <- FALSE
+  while(!cond){
+    
+    multityp <- mats
+    
+    multityp.fill <- fill_mat(multityp, dis = idis, p1 = dp1, p2 = dp2)
+    #diag(multityp.fill) <- 0
+    #self <- runif(length(diag(multityp.fill)), 0, 1)
+    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -self, 0)
+    a.i <- runif(nrow(multityp.fill), .1, .5)
+    
+    par1 <- list(alpha = runif(nrow(multityp.fill), 0, Rmax), m = multityp.fill)
+    dyn <-evalWithTimeout(ode(a.i, times = 1:tf, func = lvm, parms = par1, events = list(func = efun, time =  1:tf)), timeout = 150, onTimeout = "silent")
+    
+    if(is.null(dyn)){cond <- FALSE;next}
+    if(any(is.na(dyn))){cond <- FALSE;next}
+    
+    if(nrow(dyn) == tf){
+      spp <- dyn[tf, -1] > 10^-10
+      conn <- is.connected(graph.adjacency(abs(sign(multityp.fill[spp,spp]))))
+      cond <- ifelse(sum(spp) >= 25, conn, FALSE)
+      
+    }else{
+      cond <- FALSE
+    }
+    
+  }
+  
+  if(plot){
+    matplot(dyn[,-1], typ = "l", main = sum(dyn[tf,-1] > 10^-10))
+  }
+  
+  return(list(m = multityp.fill, dyn1 = dyn, alpha = par1$alpha))
+}
 
 
 ###########################################
@@ -355,18 +392,19 @@ typ_bet <- function(mat){
 ###########################################
 ###########################################
 ###########################################
-
+tatoosh <- as.matrix(read.csv("C:/Users/jjborrelli/Desktop/GitHub/rKeystone/tatoosh.csv", header = F))
 
 library(parallel)
 library(doSNOW)
 strt <- Sys.time()
 cl <- makeCluster(detectCores() - 1)
-clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cvar", "key_effect", "int_sp", "sp_role"))
+clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cvar", "key_effect", "int_sp", "sp_role", "tatoosh"))
 registerDoSNOW(cl)
-iter = 5000
+iter = 1000
 
-foreach(x = 4001:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve")) %dopar% {
-  init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
+foreach(x = 11:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve", "R.utils")) %dopar% {
+  #init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
+  init <- isim_tatoosh(tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE, mats = tatoosh)
 
   mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
   diag(mat) <- 0
@@ -384,7 +422,7 @@ foreach(x = 4001:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolv
   
   keylist <- list(effect = ke1[[1]], modeffect = ke1[[2]], roles = sr1, ints = isp)
   
-  saveRDS(keylist, paste("D:/jjborrelli/keystone/", "key", x, ".rds", sep = ""))
+  saveRDS(keylist, paste("D:/jjborrelli/keystoneTATOOSH/", "key", x, ".rds", sep = ""))
   
   return(keylist)
 }
@@ -407,6 +445,17 @@ kem <- do.call(rbind, lapply(keylist,"[[", 2))
 ro <- do.call(rbind, lapply(keylist, "[[", 3))
 ints <- do.call(rbind, lapply(keylist, "[[", 4))
 
+commNspp <- sapply(lapply(keylist, "[[", 1), nrow)
+commID <- rep(1:5000, commNspp)
+commnsp <- rep(commNspp, commNspp)
+
+modNum <- lapply(lapply(keylist, "[[", 3), function(x){
+  nmod <- as.vector(table(x$module))
+  return(nmod[x$module+1])
+})
+
+
+
 hist(ke[,"tot"][ke[,"tot"]<0])
 sum(ke[,"tot"] < -20, na.rm  = T)
 dim(ke)
@@ -414,12 +463,78 @@ dim(ke)
 colnames(ro)
 ggplot(kem, aes(x = factor(Group.1), y = log10(x), fill = factor(rmod))) + geom_boxplot()
 
-df <- data.frame(ro, ks = ke[,"tot"])
-df <- df[complete.cases(df),]
-uwfit <- lm(ks ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity,
-            data = df)
+df1 <- data.frame(ro, ints, ke)
+df1$ext[df1$ext < 0] <- 0
+df1$ext2 <- df1$ext/commnsp
+df1$cID <- commID
+df1$cnsp <- commnsp
+df1$mnum <- unlist(modNum)
+df1 <- df1[complete.cases(df1),]
+
+uwfit <- lm(tot ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity,
+            data = df1)
 summary(uwfit)
 
 wfit <- lm(ext ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connectivity,
            data = data.frame(ext = ke[,"tot"], ro))
 summary(wfit)
+
+# ext + tteq + ls + tot + npos + mpos + maxp + nneg + mneg + maxn + cvi + cvf + diff + div + ext2
+
+# bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + name + module + connectivity + participation + role + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum
+
+# bet.uw + d.in + d.out + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + name + module + connectivity + participation + role + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut + cID + cnsp + mnum
+
+plot(df$ext, df$diff)
+
+form1 <- formula(ext ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+lin1 <- lm(form1, data = df1, x = F, y = F, model = F)
+summary(lin1)
+
+form2 <- formula(tteq ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+lin2 <- lm(form2, data = df1, x = F, y = F, model = F)
+summary(lin2)
+
+form3 <- formula(ls ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+lin3 <- lm(form3, data = df1, x = F, y = F, model = F)
+summary(lin3)
+
+form4 <- formula(tot ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+lin4 <- lm(form4, data = df1, x = F, y = F, model = F)
+summary(lin4)
+
+form5 <- formula(cvi ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+lin5 <- lm(form5, data = df1, x = F, y = F, model = F)
+summary(lin5)
+
+dfimp <- (dplyr::select(df1, ext:ext2))
+pc1 <- princomp(dfimp)
+summary(pc1)
+
+#######################
+
+df1$hasext <- df1$ext != 0
+df1$bigneg <- df1$tot < -10
+
+form6 <- formula(hasext ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+glin6 <- glm(form6, data = df1, x = F, y = F, model = F, family = "binomial")
+summary(glin6)
+
+form7 <- formula(bigneg ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+glin7 <- glm(form7, data = df1, x = F, y = F, model = F, family = "binomial")
+summary(glin7)
+DAAG::cv.binary(glin7)
+
+df1$pc1 <- pc1$scores[,1]
+
+form8 <- formula(pc1 ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
+
+lin8 <- lm(form8, data = df1, x = F, y = F, model = F)
+summary(lin8)
