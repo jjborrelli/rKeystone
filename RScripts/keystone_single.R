@@ -144,6 +144,90 @@ isim_tatoosh <- function(tf, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax 
 }
 
 
+isim_competition <- function(S, tf, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = FALSE){
+  cond <- FALSE
+  while(!cond){
+    c1 <- runif(1, .1, .8)
+    
+    mats <- get.adjacency(erdos.renyi.game(S, c1, "gnp", directed = F), sparse = F)
+    
+    multityp <- mats*-1
+    
+    multityp.fill <- fill_mat(multityp, dis = idis, p1 = dp1, p2 = dp2)
+    #diag(multityp.fill) <- 0
+    #self <- runif(length(diag(multityp.fill)), 0, 1)
+    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -self, 0)
+    a.i <- runif(nrow(multityp.fill), .1, .5)
+    
+    par1 <- list(alpha = runif(nrow(multityp.fill), 0, Rmax), m = multityp.fill)
+    dyn <-(ode(a.i, times = 1:tf, func = lvm, parms = par1, events = list(func = efun, time =  1:tf)))
+    
+    if(any(is.na(dyn))){cond <- FALSE;next}
+    
+    if(nrow(dyn) == tf){
+      spp <- dyn[tf, -1] > 10^-10 
+      spp[spp] <- spp[spp] & colSums(abs(sign(par1$m[spp, spp])))-1 != 0 & rowSums(abs(sign(par1$m[spp, spp])))-1 != 0
+      
+      if(sum(spp) == 0){next}
+      conn <- TRUE#is.connected(graph.adjacency(abs(sign(multityp.fill[spp,spp]))))
+      
+      cond <- ifelse(sum(spp) >= 25, conn, FALSE)
+      
+    }else{
+      cond <- FALSE
+    }
+    
+  }
+  
+  if(plot){
+    matplot(dyn[,-1], typ = "l", main = sum(dyn[tf,-1] > 10^-10))
+  }
+  
+  return(list(m = multityp.fill[spp,spp], dyn1 = dyn[,c(TRUE, spp)], alpha = par1$alpha[spp]))
+}
+
+
+isim_predation <- function(S, tf, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = FALSE){
+  cond <- FALSE
+  while(!cond){
+    c1 <- runif(1, .1, .8)
+    
+    mats <- get.adjacency(erdos.renyi.game(S, c1, "gnp", directed = F), sparse = F)
+    multityp <- mats
+    for(i in 1:nrow(multityp)){
+      s1 <- sample(c(1, -1), length(i:ncol(multityp)), replace = T)
+      multityp[i, i:ncol(multityp)] <- s1*multityp[i, i:ncol(multityp)]
+      multityp[i:ncol(multityp), i] <- s1*-1*multityp[i:ncol(multityp),i]
+    }
+    
+    multityp.fill <- fill_mat(multityp, dis = idis, p1 = dp1, p2 = dp2)
+    #diag(multityp.fill) <- 0
+    #self <- runif(length(diag(multityp.fill)), 0, 1)
+    diag(multityp.fill) <- runif(length(diag(multityp.fill)), -self, 0)
+    a.i <- runif(nrow(multityp.fill), .1, .5)
+    
+    par1 <- list(alpha = runif(nrow(multityp.fill), 0, Rmax), m = multityp.fill)
+    dyn <-(ode(a.i, times = 1:tf, func = lvm, parms = par1, events = list(func = efun, time =  1:tf)))
+    
+    if(any(is.na(dyn))){cond <- FALSE;next}
+    
+    if(nrow(dyn) == tf){
+      spp <- dyn[tf, -1] > 10^-10 
+      conn <- is.connected(graph.adjacency(abs(sign(multityp.fill[spp,spp]))))
+      cond <- ifelse(sum(spp) >= 25, conn, FALSE)
+      
+    }else{
+      cond <- FALSE
+    }
+    
+  }
+  
+  if(plot){
+    matplot(dyn[,-1], typ = "l", main = sum(dyn[tf,-1] > 10^-10))
+  }
+  
+  return(list(m = multityp.fill, dyn1 = dyn, alpha = par1$alpha))
+}
 ###########################################
 ###########################################
 ###########################################
@@ -251,8 +335,8 @@ int_sp <- function(mat){
   mm1 <- matrix(nrow = nrow(mat), ncol = 18)
   colnames(mm1) <- c("self", "nComp", "CompIn", "CompOut", "nMut", "MutIn", "MutOut", "nPred", "PredIn", "PredOut", "nAmens", "AmensIn", "AmensOut", "nComm", "CommIn", "CommOut", "allIn", "allOut")
   for(i in 1:nrow(mat)){
-    i1 <- mat[,i]
-    i2 <- mat[i,]
+    i2 <- mat[,i]
+    i1 <- mat[i,]
     
     comp <- which(i1 < 0 & i2 < 0)
     mut <- which(i1 > 0 & i2 > 0)
@@ -339,8 +423,8 @@ typ_bet <- function(mat){
   
   prs <- t(combn(1:nrow(mat), 2))
   
-  i1 <- c()
   i2 <- c()
+  i1 <- c()
   
   for(i in 1:nrow(prs)){
     i1[i] <- mat[prs[i, 1], prs[i, 2]]
@@ -402,10 +486,12 @@ clusterExport(cl, c("lvm", "ext1", "fill_mat", "isim", "persist", "biodiff", "cv
 registerDoSNOW(cl)
 iter = 1000
 
-foreach(x = 11:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve", "R.utils")) %dopar% {
+foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve", "R.utils")) %dopar% {
   #init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
-  init <- isim_tatoosh(tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE, mats = tatoosh)
-
+  #init <- isim_tatoosh(tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE, mats = tatoosh)
+  #init <- isim_competition(S = 80, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
+  init <- isim_predation(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
+  
   mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
   diag(mat) <- 0
   
@@ -422,15 +508,16 @@ foreach(x = 11:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve"
   
   keylist <- list(effect = ke1[[1]], modeffect = ke1[[2]], roles = sr1, ints = isp)
   
-  saveRDS(keylist, paste("D:/jjborrelli/keystoneTATOOSH/", "key", x, ".rds", sep = ""))
+  saveRDS(keylist, paste("D:/jjborrelli/keystonePRED/", "key", x, ".rds", sep = ""))
   
-  return(keylist)
+  #return(keylist)
 }
 
 stopCluster(cl)
 fin <- Sys.time()
 fin - strt
 
+iter = 5000
 t1 <- Sys.time()
 keylist <- list()
 for(x in 1:iter){
@@ -446,7 +533,7 @@ ro <- do.call(rbind, lapply(keylist, "[[", 3))
 ints <- do.call(rbind, lapply(keylist, "[[", 4))
 
 commNspp <- sapply(lapply(keylist, "[[", 1), nrow)
-commID <- rep(1:5000, commNspp)
+commID <- rep(1:iter, commNspp)
 commnsp <- rep(commNspp, commNspp)
 
 modNum <- lapply(lapply(keylist, "[[", 3), function(x){
@@ -457,7 +544,7 @@ modNum <- lapply(lapply(keylist, "[[", 3), function(x){
 
 
 hist(ke[,"tot"][ke[,"tot"]<0])
-sum(ke[,"tot"] < -20, na.rm  = T)
+sum(ke[,"tot"] < 0, na.rm  = T)
 dim(ke)
 
 colnames(ro)
@@ -479,13 +566,26 @@ wfit <- lm(ext ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connect
            data = data.frame(ext = ke[,"tot"], ro))
 summary(wfit)
 
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+f1 <- formula(factor(sign(tot)) ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+
+cart <- rpart(f1, data = df1, method = "class")
+prp(cart, extra = 1)
+rf1 <- randomForest(f1, data = df1, mtry = 20, ntree = 500)
+
+f2 <- formula(sqrt(abs(tot)) ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+
+cart2 <- rpart(f2, data = df1, method = "anova")
+prp(cart2, extra = 1)
 # ext + tteq + ls + tot + npos + mpos + maxp + nneg + mneg + maxn + cvi + cvf + diff + div + ext2
 
 # bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + name + module + connectivity + participation + role + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum
 
 # bet.uw + d.in + d.out + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + name + module + connectivity + participation + role + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut + cID + cnsp + mnum
 
-plot(df$ext, df$diff)
+plot(df1$ext, df1$diff)
 
 form1 <- formula(ext ~ bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum)
 
