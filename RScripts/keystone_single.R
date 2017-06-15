@@ -517,11 +517,11 @@ stopCluster(cl)
 fin <- Sys.time()
 fin - strt
 
-iter = 5000
+iter = 100
 t1 <- Sys.time()
 keylist <- list()
 for(x in 1:iter){
-  keylist[[x]] <- readRDS(paste("D:/jjborrelli/keystone/", "key", x, ".rds", sep = ""))
+  keylist[[x]] <- readRDS(paste("D:/jjborrelli/keystoneTATOOSH/", "key", x, ".rds", sep = ""))
   print(x)
 }
 t2 <- Sys.time()
@@ -541,7 +541,18 @@ modNum <- lapply(lapply(keylist, "[[", 3), function(x){
   return(nmod[x$module+1])
 })
 
+fz <- list()
+for(i in 1:100){
+  fz[[i]] <- fzmod(get_abundvec(ro$bio[commID == i], 2000))
+}
+#fz1 <- do.call(rbind, fz)
+#fz2 <- do.call(rbind, fz)
+#fz3 <- do.call(rbind, fz)
+fz4 <- do.call(rbind, fz)
 
+
+imps <- (reshape2::melt(dplyr::select(data.frame(ke), ext, tteq, ls, tot, npos, mpos, nneg, mneg, cvi, cvf, div)))
+ggplot(imps, aes(x = value, y = ..density..)) + geom_histogram() + facet_wrap(~variable, scales = "free") + theme_bw()
 
 hist(ke[,"tot"][ke[,"tot"]<0])
 sum(ke[,"tot"] < 0, na.rm  = T)
@@ -556,14 +567,16 @@ df1$ext2 <- df1$ext/commnsp
 df1$cID <- commID
 df1$cnsp <- commnsp
 df1$mnum <- unlist(modNum)
+df1$stab <- ke[,"ls"] > 0
+df1$pn <- ke[,"npos"]/ke[,"nneg"]
 df1 <- df1[complete.cases(df1),]
 
-uwfit <- lm(tot ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity,
-            data = df1)
+uwfit <- glm(stab ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + mnum,
+            data = df1, family = "binomial")
 summary(uwfit)
 
-wfit <- lm(ext ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connectivity,
-           data = data.frame(ext = ke[,"tot"], ro))
+wfit <- glm(stab ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + connectivity + mnum,
+           data = df1, family = "binomial")
 summary(wfit)
 
 library(rpart)
@@ -572,13 +585,50 @@ library(randomForest)
 f1 <- formula(factor(sign(tot)) ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
 cart <- rpart(f1, data = df1, method = "class")
-prp(cart, extra = 1)
+plotcp(cart)
+prn <- prune(cart, cp = cart$cptable[which.min(cart$cptable[,"xerror"]),"CP"])
+prp(prune(cart, cp = cart$cptable[which.min(cart$cptable[,"xerror"]),"CP"]), extra = 1)
 rf1 <- randomForest(f1, data = df1, mtry = 20, ntree = 500)
 
 f2 <- formula(sqrt(abs(tot)) ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
 cart2 <- rpart(f2, data = df1, method = "anova")
-prp(cart2, extra = 1)
+plotcp(cart2)
+prp(prune(cart2, cp = cart2$cptable[which.min(cart2$cptable[,"xerror"]),"CP"]), extra = 1)
+
+
+f3 <- formula(ext ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum)
+
+cart3 <- rpart(f3, data = df1, method = "class")
+plotcp(cart3)
+prp(prune(cart3, cp = cart3$cptable[which.min(cart3$cptable[,"xerror"]),"CP"]), extra = 1)
+
+gfit <- lme4::glmer(f3, data = df1[-1000,], family = "poisson", model = F, x = F, y = F)
+summary(gfit)
+predict(gfit, df1[1000,])
+
+
+f4 <- formula(stab ~ bet.uw + d.tot + cc.uw + apl.uw.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+
+cart4 <- rpart(f4, data = df1, method = "class")
+plotcp(cart4)
+prn <- prune(cart4, cp = cart4$cptable[which.min(cart4$cptable[,"xerror"]),"CP"])
+prp(prune(cart4, cp = cart4$cptable[which.min(cart4$cptable[,"xerror"]),"CP"]), extra = 1)
+summary(cart4)
+
+conf.matrix <- table(factor(sign(df1$tot)), predict(prn,type="class"))
+rownames(conf.matrix) <- paste("Actual", rownames(conf.matrix), sep = ":")
+colnames(conf.matrix) <- paste("Pred", colnames(conf.matrix), sep = ":")
+print(conf.matrix)
+
+
+f5 <- formula(log10(pn) ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+
+cart5 <- rpart(f5, data = df1, method = "anova")
+rsq.rpart(cart5)
+prp(prune(cart5, cp = cart5$cptable[which.min(cart5$cptable[,"xerror"]),"CP"]), extra = 1)
+
+
 # ext + tteq + ls + tot + npos + mpos + maxp + nneg + mneg + maxn + cvi + cvf + diff + div + ext2
 
 # bet.w + d.in + d.out + d.tot + cc.w + apl.w.mu + bio + cvbio + mod.w + mem.w + name + module + connectivity + participation + role + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + allIn + allOut  + cID + cnsp + mnum
