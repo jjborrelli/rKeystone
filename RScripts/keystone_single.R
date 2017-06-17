@@ -517,11 +517,11 @@ stopCluster(cl)
 fin <- Sys.time()
 fin - strt
 
-iter = 100
+iter = 5000
 t1 <- Sys.time()
 keylist <- list()
 for(x in 1:iter){
-  keylist[[x]] <- readRDS(paste("D:/jjborrelli/keystoneTATOOSH/", "key", x, ".rds", sep = ""))
+  keylist[[x]] <- readRDS(paste("D:/jjborrelli/keystone/", "key", x, ".rds", sep = ""))
   print(x)
 }
 t2 <- Sys.time()
@@ -570,6 +570,10 @@ df1$mnum <- unlist(modNum)
 df1$stab <- ke[,"ls"] > 0
 df1$pn <- ke[,"npos"]/ke[,"nneg"]
 df1 <- df1[complete.cases(df1),]
+
+imps2 <- reshape2::melt(dplyr::select(df1, ext, pn))
+
+ggplot(imps2, aes(x = value, y = ..density..)) + geom_histogram(bins = 40) + facet_wrap(~variable, scales = "free") + theme_bw()
 
 uwfit <- glm(stab ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + mnum,
             data = df1, family = "binomial")
