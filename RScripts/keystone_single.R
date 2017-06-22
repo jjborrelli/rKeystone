@@ -541,14 +541,14 @@ modNum <- lapply(lapply(keylist, "[[", 3), function(x){
   return(nmod[x$module+1])
 })
 
-fz <- list()
-for(i in 1:100){
-  fz[[i]] <- fzmod(get_abundvec(ro$bio[commID == i], 2000))
-}
+#fz <- list()
+#for(i in 1:100){
+#  fz[[i]] <- fzmod(get_abundvec(ro$bio[commID == i], 2000))
+#}
 #fz1 <- do.call(rbind, fz)
 #fz2 <- do.call(rbind, fz)
 #fz3 <- do.call(rbind, fz)
-fz4 <- do.call(rbind, fz)
+#fz4 <- do.call(rbind, fz)
 
 
 imps <- (reshape2::melt(dplyr::select(data.frame(ke), ext, tteq, ls, tot, npos, mpos, nneg, mneg, cvi, cvf, div)))
@@ -601,13 +601,13 @@ plotcp(cart2)
 prp(prune(cart2, cp = cart2$cptable[which.min(cart2$cptable[,"xerror"]),"CP"]), extra = 1)
 
 
-f3 <- formula(ext ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum)
+f3 <- formula(ext ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum + (1 | cID))
 
 cart3 <- rpart(f3, data = df1, method = "class")
 plotcp(cart3)
 prp(prune(cart3, cp = cart3$cptable[which.min(cart3$cptable[,"xerror"]),"CP"]), extra = 1)
 
-gfit <- lme4::glmer(f3, data = df1[-1000,], family = "poisson", model = F, x = F, y = F)
+gfit <- lme4::glmer(f3, data = df1[-1000,], family = "poisson")
 summary(gfit)
 predict(gfit, df1[1000,])
 
