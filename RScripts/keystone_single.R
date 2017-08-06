@@ -487,10 +487,10 @@ registerDoSNOW(cl)
 iter = 1000
 
 foreach(x = 1:iter, .packages = c("deSolve", "rnetcarto", "igraph", "rootSolve", "R.utils")) %dopar% {
-  #init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
+  init <- isim(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
   #init <- isim_tatoosh(tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE, mats = tatoosh)
   #init <- isim_competition(S = 80, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
-  init <- isim_predation(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
+  #init <- isim_predation(S = 50, tf = 2000, efun = ext1, idis = "beta", dp1 = 1, dp2 = 4, Rmax = 1, self = 1, plot = TRUE)
   
   mat <- init$m[init$dyn1[2000,-1] > 10^-10,init$dyn1[2000,-1] > 10^-10]
   diag(mat) <- 0
@@ -517,6 +517,15 @@ stopCluster(cl)
 fin <- Sys.time()
 fin - strt
 
+iter = 1000
+t1 <- Sys.time()
+keylistP <- list()
+keylistC <- list()
+for(x in 1:iter){
+  keylistP[[x]] <- readRDS(paste("D:/jjborrelli/keystonePRED/", "key", x, ".rds", sep = ""))
+  keylistC[[x]] <- readRDS(paste("D:/jjborrelli/keystoneCOMP/", "key", x, ".rds", sep = ""))
+  print(x)
+}
 iter = 5000
 t1 <- Sys.time()
 keylist <- list()
@@ -528,9 +537,30 @@ t2 <- Sys.time()
 t2-t1
 
 ke <- do.call(rbind, lapply(keylist, "[[", 1))
+keP <- do.call(rbind, lapply(keylistP, "[[", 1))
+keC <- do.call(rbind, lapply(keylistC, "[[", 1))
 kem <- do.call(rbind, lapply(keylist,"[[", 2))
+ke <- data.frame(ke, typ = "Mixed")
+keP <- data.frame(keP, typ = "Predation")
+keC <- data.frame(keC, typ = "Competition")
+
 ro <- do.call(rbind, lapply(keylist, "[[", 3))
+ro <- data.frame(ro, typ = "Mixed")
+roP <- do.call(rbind, lapply(keylistP, "[[", 3))
+roP <- data.frame(roP, typ = "Predation")
+roC <- do.call(rbind, lapply(keylistC, "[[", 3))
+roC <- data.frame(roC, typ = "Competition")
 ints <- do.call(rbind, lapply(keylist, "[[", 4))
+ints <- data.frame(ints, typ = "Mixed")
+intsP <- do.call(rbind, lapply(keylistP, "[[", 4))
+intsP <- data.frame(intsP, typ = "Predation")
+intsC <- do.call(rbind, lapply(keylistC, "[[", 4))
+intsC <- data.frame(intsC, typ = "Competition")
+
+g.o <- colnames(intsC)[grep("Out",colnames(intsC))]
+g.i <- colnames(intsC)[grep("In",colnames(intsC))]
+
+colnames(intsC)[c(grep("In",colnames(intsC)), grep("Out",colnames(intsC)))] <- c(g.o, g.i)
 
 commNspp <- sapply(lapply(keylist, "[[", 1), nrow)
 commID <- rep(1:iter, commNspp)
@@ -549,7 +579,66 @@ modNum <- lapply(lapply(keylist, "[[", 3), function(x){
 #fz2 <- do.call(rbind, fz)
 #fz3 <- do.call(rbind, fz)
 #fz4 <- do.call(rbind, fz)
+ggplot(reshape2::melt(ints[,c(2,5,8,11,14)]), aes(x = value, y = ..density..)) +
+  geom_histogram() + facet_wrap(~Var2, scales = "free", nrow = 5) + 
+  labs(x = "Number of Interactions per Species", y = "Density") + theme_bw(base_size = 20)
 
+ggplot(reshape2::melt(ints[,-c(1,2,5,8,11,14,17,18)]), aes(x = value, y = ..density..)) +
+  geom_histogram() + facet_wrap(~Var2, scales = "free", nrow = 5) + 
+  labs(x = "", y = "Density") + theme_bw()
+
+ggplot(reshape2::melt(ro[,-c(2,3,4,7,9,13,14,15,16,17,20)]), aes(x = value, y = ..density..)) +
+  geom_histogram() + facet_wrap(~variable, scales = "free", nrow = 3) + 
+  labs(x = "", y = "Density") + theme_bw(base_size = 20)
+
+qplot(data = dfall, x = abs(ext), y = ..density.., geom = "histogram", binwidth = 1, xlab = "Number of Extinctions", ylab = "Density") + theme_bw(base_size = 20) + facet_wrap(~typ)
+
+dfall <- (data.frame(ext = c(ke$ext, keP$ext, keC$ext), typ = c(as.character(ke$ctyp),as.character(keP$ctyp),as.character(keC$ctyp))))
+
+ggplot(dfall, aes(x = abs(ext), y = ..density..)) + geom_histogram(binwidth = 1) +
+  facet_wrap(~factor(typ, levels = c("Mixed", "Predation", "Competition")), scales = "free") +
+  theme_bw(base_size = 20) + labs(x = "Number of Extinctions", y = "Density")
+
+ggplot(dfall, aes(y = abs(ext), 
+                  x = factor(typ, levels = c("Mixed", "Predation", "Competition")))) +
+  geom_point(alpha = .1, position = "jitter", size = 1) +
+  geom_violin() +
+  theme_bw(base_size = 14) + labs(y = "Time to Stable Equilibrium", x = "Community Type")
+
+ggsave("D:/key-images/allextinction.svg", width = 5, height = 4.5)
+
+dfall <- (data.frame(ext = c(ke$tteq, keP$tteq, keC$tteq), typ = c(as.character(ke$typ),as.character(keP$typ),as.character(keC$typ))))
+
+ggplot(dfall, aes(x = abs(ext), y = ..density..)) + geom_histogram(binwidth = 100) +
+  facet_wrap(~factor(typ, levels = c("Mixed", "Predation", "Competition")), scales = "free") +
+  theme_bw(base_size = 20) + labs(x = "Time to Stable Equilibrium", y = "Density")
+
+ggsave("D:/key-images/alltteq1.png", width = 5, height = 4.5)
+
+qplot(x = abs(ke[,"tteq"]), y = ..density.., geom = "histogram", binwidth = 100, xlab = "Time to Equilibrium", ylab = "Density") + theme_bw(base_size = 20)
+
+chdf <- data.frame(PercentChange = c(ke$tot, keP$tot, keC$tot),
+                   SignChange = sign(c(ke$tot, keP$tot, keC$tot)),
+                   Type = c(as.character(ke$typ),as.character(keP$typ),as.character(keC$typ)))
+chdf <- chdf[chdf$PercentChange != 0,]
+chdf <- chdf[complete.cases(chdf),]
+chdf <- chdf[chdf$PercentChange < 250,]
+#chdf$PercentChange <- log10(abs(chdf$PercentChange))
+chdf$SignChange <- ifelse(chdf$SignChange < 0, "Decrease", "Increase")
+
+ggplot(chdf, aes(x = PercentChange, y = ..density..)) + geom_histogram(binwidth = 20) +
+  facet_grid(~factor(Type, levels = c("Mixed", "Predation", "Competition")), scales = "free") + 
+  labs(x = "Percent Change in Biomass", y = "Density") + theme_bw(base_size = 20)
+
+aggregate(c(ke$tot, keP$tot, keC$tot), list(c(as.character(ke$ctyp),as.character(keP$ctyp),as.character(keC$ctyp))), function(x) sum(x > 250, na.rm= T))
+
+ggsave("D:/key-images/allperchange.svg", width = 15, height = 10)
+
+ggplot(chdf, aes(x = factor(Type, levels = c("Mixed", "Predation", "Competition")))) +
+  geom_bar(aes(fill = SignChange), position = "fill") +
+  theme_bw(base_size = 20) + labs(x = "Community Type", y = "Count", fill = "Change in \n Biomass") 
+
+ggsave("D:/key-images/allsignchange.svg", width = 12, height = 10)
 
 imps <- (reshape2::melt(dplyr::select(data.frame(ke), ext, tteq, ls, tot, npos, mpos, nneg, mneg, cvi, cvf, div)))
 ggplot(imps, aes(x = value, y = ..density..)) + geom_histogram() + facet_wrap(~variable, scales = "free") + theme_bw()
@@ -567,9 +656,11 @@ df1$ext2 <- df1$ext/commnsp
 df1$cID <- commID
 df1$cnsp <- commnsp
 df1$mnum <- unlist(modNum)
-df1$stab <- ke[,"ls"] > 0
+df1$stab <- ke[,"ls"] < 0
 df1$pn <- ke[,"npos"]/ke[,"nneg"]
 df1 <- df1[complete.cases(df1),]
+cls <- cls[complete.cases(df1)]
+
 
 imps2 <- reshape2::melt(dplyr::select(df1, ext, pn))
 
@@ -586,25 +677,29 @@ summary(wfit)
 library(rpart)
 library(rpart.plot)
 library(randomForest)
-f1 <- formula(factor(sign(tot)) ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+f1 <- formula(signch ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+f1 <- formula(factor(cls) ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
-cart <- rpart(f1, data = df1, method = "class")
+df1$signch <- (sign(df1$tot) == -1)
+library(FFTrees)
+FFTrees(f1, data = df1)
+cart <- rpart(f1, data = df1[-which(df1[,"bio"] > 1000),], method = "class")
 plotcp(cart)
 prn <- prune(cart, cp = cart$cptable[which.min(cart$cptable[,"xerror"]),"CP"])
 prp(prune(cart, cp = cart$cptable[which.min(cart$cptable[,"xerror"]),"CP"]), extra = 1)
 rf1 <- randomForest(f1, data = df1, mtry = 20, ntree = 500)
 
-f2 <- formula(sqrt(abs(tot)) ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+f2 <- formula(sqrt(abs(tot))  ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
-cart2 <- rpart(f2, data = df1, method = "anova")
-plotcp(cart2)
-prp(prune(cart2, cp = cart2$cptable[which.min(cart2$cptable[,"xerror"]),"CP"]), extra = 1)
+cart2 <- rpart(f2, data = df1[-which(df1[,"bio"] > 1000),], method = "anova")
+#plotcp(cart2)
+prp(prune(cart2, cp = cart2$cptable[which.min(cart2$cptable[,"xerror"]),"CP"]))
 
 
-f3 <- formula(ext ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum + (1 | cID))
+f3 <- formula(ext3 ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum )
 
-cart3 <- rpart(f3, data = df1, method = "class")
-plotcp(cart3)
+cart3 <- rpart(f3, data = df1[-which(df1[,"bio"] > 1000),], method = "class")
+#plotcp(cart3)
 prp(prune(cart3, cp = cart3$cptable[which.min(cart3$cptable[,"xerror"]),"CP"]), extra = 1)
 
 gfit <- lme4::glmer(f3, data = df1[-1000,], family = "poisson")
@@ -612,7 +707,7 @@ summary(gfit)
 predict(gfit, df1[1000,])
 
 
-f4 <- formula(stab ~ bet.uw + d.tot + cc.uw + apl.uw.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+f4 <- formula(stab ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
 cart4 <- rpart(f4, data = df1, method = "class")
 plotcp(cart4)
