@@ -562,14 +562,46 @@ g.i <- colnames(intsC)[grep("In",colnames(intsC))]
 
 colnames(intsC)[c(grep("In",colnames(intsC)), grep("Out",colnames(intsC)))] <- c(g.o, g.i)
 
+g.o <- colnames(intsP)[grep("Out",colnames(intsP))]
+g.i <- colnames(intsP)[grep("In",colnames(intsP))]
+
+colnames(intsP)[c(grep("In",colnames(intsP)), grep("Out",colnames(intsP)))] <- c(g.o, g.i)
+
+g.o <- colnames(ints)[grep("Out",colnames(ints))]
+g.i <- colnames(ints)[grep("In",colnames(ints))]
+
+colnames(ints)[c(grep("In",colnames(ints)), grep("Out",colnames(ints)))] <- c(g.o, g.i)
+
+
 commNspp <- sapply(lapply(keylist, "[[", 1), nrow)
 commID <- rep(1:iter, commNspp)
 commnsp <- rep(commNspp, commNspp)
+
+commNsppC <- sapply(lapply(keylistC, "[[", 1), nrow)
+commIDC <- rep(1:1000, commNsppC)
+commnspC <- rep(commNsppC, commNsppC)
+
+commNsppP <- sapply(lapply(keylistP, "[[", 1), nrow)
+commIDP <- rep(1:1000, commNsppP)
+commnspP <- rep(commNsppP, commNsppP)
+
+
 
 modNum <- lapply(lapply(keylist, "[[", 3), function(x){
   nmod <- as.vector(table(x$module))
   return(nmod[x$module+1])
 })
+
+modNumC <- lapply(lapply(keylistC, "[[", 3), function(x){
+  nmod <- as.vector(table(x$module))
+  return(nmod[x$module+1])
+})
+
+modNumP <- lapply(lapply(keylistP, "[[", 3), function(x){
+  nmod <- as.vector(table(x$module))
+  return(nmod[x$module+1])
+})
+
 
 #fz <- list()
 #for(i in 1:100){
@@ -659,8 +691,27 @@ df1$mnum <- unlist(modNum)
 df1$stab <- ke[,"ls"] < 0
 df1$pn <- ke[,"npos"]/ke[,"nneg"]
 df1 <- df1[complete.cases(df1),]
-cls <- cls[complete.cases(df1)]
+#cls <- cls[complete.cases(df1)]
 
+dfC <- data.frame(roC, intsC, keC)
+dfC$ext[dfC$ext < 0] <- 0
+dfC$ext2 <- dfC$ext/commnspC
+dfC$cID <- commIDC
+dfC$cnsp <- commnspC
+dfC$mnum <- unlist(modNumC)
+dfC$stab <- keC[,"ls"] < 0
+dfC$pn <- keC[,"npos"]/keC[,"nneg"]
+dfC <- dfC[complete.cases(dfC),]
+
+dfP <- data.frame(roP, intsP, keP)
+dfP$ext[dfP$ext < 0] <- 0
+dfP$ext2 <- dfP$ext/commnspP
+dfP$cID <- commIDP
+dfP$cnsp <- commnspP
+dfP$mnum <- unlist(modNumP)
+dfP$stab <- keP[,"ls"] < 0
+dfP$pn <- keP[,"npos"]/keP[,"nneg"]
+dfP <- dfP[complete.cases(dfP),]
 
 imps2 <- reshape2::melt(dplyr::select(df1, ext, pn))
 
@@ -677,43 +728,50 @@ summary(wfit)
 library(rpart)
 library(rpart.plot)
 library(randomForest)
-f1 <- formula(signch ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+f1 <- formula((signch) ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 f1 <- formula(factor(cls) ~ bet.w + d.tot + cc.w + apl.w.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
 df1$signch <- (sign(df1$tot) == -1)
+df1$signch <- ifelse(df1$signch, -1, 1)
+dfC$signch <- (sign(dfC$tot) == -1)
+dfP$signch <- (sign(dfP$tot) == -1)
 library(FFTrees)
-FFTrees(f1, data = df1)
+fftree1 <- FFTrees(f1, data = df1)
 cart <- rpart(f1, data = df1[-which(df1[,"bio"] > 1000),], method = "class")
 plotcp(cart)
 prn <- prune(cart, cp = cart$cptable[which.min(cart$cptable[,"xerror"]),"CP"])
 prp(prune(cart, cp = cart$cptable[which.min(cart$cptable[,"xerror"]),"CP"]), extra = 1)
-rf1 <- randomForest(f1, data = df1, mtry = 20, ntree = 500)
+rf1 <- randomForest(f1, data = dfP, mtry = 20, ntree = 500)
+
+cart <- rpart(f1, data = dfP, method = "class")
 
 f2 <- formula(sqrt(abs(tot))  ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + mod.uw + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
 cart2 <- rpart(f2, data = df1[-which(df1[,"bio"] > 1000),], method = "anova")
 #plotcp(cart2)
-prp(prune(cart2, cp = cart2$cptable[which.min(cart2$cptable[,"xerror"]),"CP"]))
+prp(prune(cart2, cp = cart2$cptable[which.min(cart2$cptable[,"xerror"]),"CP"]), extra = 1)
+cart2 <- rpart(f2, data = dfP, method = "anova")
 
+f3 <- formula(ext ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum )
 
-f3 <- formula(ext3 ~ bet.w + d.tot + cc.w + apl.w.mu + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut + cnsp + mnum )
-
-cart3 <- rpart(f3, data = df1[-which(df1[,"bio"] > 1000),], method = "class")
+cart3 <- rpart(f3, data = df1[-which(df1[,"bio"] > 1000),], method = "anova")
 #plotcp(cart3)
 prp(prune(cart3, cp = cart3$cptable[which.min(cart3$cptable[,"xerror"]),"CP"]), extra = 1)
+cart3 <- rpart(f3, data = dfP, method = "anova")
 
 gfit <- lme4::glmer(f3, data = df1[-1000,], family = "poisson")
 summary(gfit)
 predict(gfit, df1[1000,])
 
 
-f4 <- formula(stab ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
+f4 <- formula(tteq ~ bet.uw + d.tot + cc.uw + apl.uw.mu + bio + cvbio + connectivity + participation + self + nComp + CompIn + CompOut + nMut + MutIn + MutOut + nPred + PredIn + PredOut + nAmens + AmensIn + AmensOut + nComm + CommIn + CommOut+ cID + cnsp + mnum)
 
-cart4 <- rpart(f4, data = df1, method = "class")
+cart4 <- rpart(f4, data = df1, method = "anova")
 plotcp(cart4)
 prn <- prune(cart4, cp = cart4$cptable[which.min(cart4$cptable[,"xerror"]),"CP"])
 prp(prune(cart4, cp = cart4$cptable[which.min(cart4$cptable[,"xerror"]),"CP"]), extra = 1)
 summary(cart4)
+cart4 <- rpart(f4, data = dfC, method = "anova")
 
 conf.matrix <- table(factor(sign(df1$tot)), predict(prn,type="class"))
 rownames(conf.matrix) <- paste("Actual", rownames(conf.matrix), sep = ":")
